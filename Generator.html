@@ -70,7 +70,8 @@
             document.querySelector('.canvas-style-base').style.display = 'inline-block';
             const selectedFiles = Array.from(document.getElementById("selectFiles").files).map(file => ({
                 name: file.name,
-                path: file.webkitRelativePath
+                path: file.webkitRelativePath,
+                file: file // ✅ add this
             }));
 
             selectedFiles.forEach(composeResource);
@@ -79,24 +80,24 @@
             draw();
         }
 
-        function composeResource(file) {
-            const path = file.path.split("/");
+        function composeResource(fileObj) {
+            const path = fileObj.path.split("/");
 
             switch (path[1]) {
-                case "Player_Base": generateResource(playerBase, file); break;
-                case "Chest": generateResource(chest, file); break;
-                case "Legs": generateResource(legs, file); break;
-                case "Feet": generateResource(feet, file); break;
-                case "Hands": generateResource(hands, file); break;
-                case "Hair": generateResource(hair, file); break;
-                case "Accessories": generateResource(accessories, file); break;
-                case "Player_Mounts": generateResource(mounts, file); break;
-                case "Tools": generateResource(tools, file); break;
+                case "Player_Base": generateResource(playerBase, fileObj); break;
+                case "Chest": generateResource(chest, fileObj); break;
+                case "Legs": generateResource(legs, fileObj); break;
+                case "Feet": generateResource(feet, fileObj); break;
+                case "Hands": generateResource(hands, fileObj); break;
+                case "Hair": generateResource(hair, fileObj); break;
+                case "Accessories": generateResource(accessories, fileObj); break;
+                case "Player_Mounts": generateResource(mounts, fileObj); break;
+                case "Tools": generateResource(tools, fileObj); break;
             }
         }
 
-        function generateResource(arr, file) {
-            arr[0].push(file);
+        function generateResource(arr, fileObj) {
+            arr[0].push(fileObj);
         }
 
         function sort() {
@@ -107,7 +108,7 @@
 
         function sortInnerArr(arr) {
             arr.sort((a, b) => a.name.localeCompare(b.name));
-            arr.unshift({ name: "n/a", path: "" });
+            arr.unshift({ name: "n/a", file: null }); // Use file instead of path
         }
 
         function initializeOptions() {
@@ -166,8 +167,8 @@
 
             function collectPaths(arr, selected) {
                 selected.forEach(index => {
-                    if (index > 0 && arr[0][index]) {
-                        imgPaths.push(arr[0][index]);
+                    if (index > 0 && arr[0][index] && arr[0][index].file) {
+                        imgPaths.push(arr[0][index].file); // push File object
                     }
                 });
             }
