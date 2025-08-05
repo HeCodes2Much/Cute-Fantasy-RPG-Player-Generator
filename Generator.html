@@ -10,20 +10,20 @@
 </head>
 
 <body class="dark-mode">
-    <label class="btn btn-primary mb-3">
-        Select Player Folder
-        <input type="file" id="selectFiles" onchange="initializeCharacterAssetsFolder()" style="display: none;" multiple
-            webkitdirectory />
-    </label>
-    <br />
-    <div id="selection" class="d-flex flex-wrap mb-3"></div>
-    <div id="right-click-save" style="display: none;">Right-click to save</div>
-    <br />
-    <div class="containers">
-        <div id="animations" style="display: flex; gap: 10px;"></div>
+    <div class="header">
+        <label class="btn btn-primary mb-3">
+            Select Player Folder
+            <input type="file" id="selectFiles" onchange="initializeCharacterAssetsFolder()" style="display: none;"
+                multiple webkitdirectory />
+        </label>
+        <div id="selection" class="d-flex flex-wrap mb-3"></div>
+        <div id="right-click-save" style="display: none;">Right-click to save</div>
     </div>
-    <br />
-    <div class="containers">
+
+    <div class="containers" style="width: 75%;">
+        <div id="animations" style="display: block;"></div>
+    </div>
+    <div class="containers" style="width: 20%;">
         <div id="base-sections" style="display: none;">
             <canvas id="canvas" class="canvas-style-base" width="576" height="3584"></canvas>
         </div>
@@ -183,20 +183,26 @@
         }
 
         const frameSize = 64;
-        const numAnimations = 6;
-        const framesPerAnimation = 6;
+        const numAnimations = 56;
         const animationSpeed = 200; // ms per frame
+
+        // Add all 56 numbers here, each corresponding to the number of frames for that animation row.
+        const framesPerAnimationArray = [
+            6, 6, 6, 6, 6, 6, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 6, 8, 8, 8, 1, 1, 1, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 9, 8, 9, 8, 9, 8, 2, 2, 2, 6, 6, 6,
+            // ... continue filling this array up to 56 values
+        ];
 
         function createAnimationCanvasesFromMainCanvas() {
             const container = document.getElementById('animations');
             container.innerHTML = ''; // clear old ones
 
-            const framesByAnimation = []; // 6 arrays, each with 6 frames
+            const framesByAnimation = [];
 
             for (let animIndex = 0; animIndex < numAnimations; animIndex++) {
+                const frameCount = framesPerAnimationArray[animIndex]; // ✅ use array here
                 const frames = [];
 
-                for (let frameIndex = 0; frameIndex < framesPerAnimation; frameIndex++) {
+                for (let frameIndex = 0; frameIndex < frameCount; frameIndex++) {
                     const frameCanvas = document.createElement('canvas');
                     frameCanvas.width = frameSize;
                     frameCanvas.height = frameSize;
@@ -204,8 +210,8 @@
 
                     frameCtx.drawImage(
                         canvas,
-                        frameIndex * frameSize,  // X (columns → left to right)
-                        animIndex * frameSize,   // Y (rows → top to bottom)
+                        frameIndex * frameSize,  // X
+                        animIndex * frameSize,   // Y
                         frameSize,
                         frameSize,
                         0,
@@ -221,7 +227,7 @@
             }
 
             // Create visible animation canvases and start animating
-            framesByAnimation.forEach((frames, animIndex) => {
+            framesByAnimation.forEach((frames) => {
                 const animCanvas = document.createElement('canvas');
                 animCanvas.width = frameSize;
                 animCanvas.height = frameSize;
@@ -356,7 +362,7 @@
         }
 
         .containers {
-            display: flex;
+            display: inline-flex;
             flex-direction: row;
             align-items: flex-start;
             margin-bottom: 20px;
@@ -373,9 +379,6 @@
             height: auto;
             border: 2px solid #007bff;
             border-radius: 5px;
-            margin: 10px;
-            padding: 10px;
-            height: auto;
             vertical-align: top;
             /* Hidden until assets are loaded */
             display: none;
@@ -392,8 +395,9 @@
         #animations canvas {
             border: 1px solid #007bff;
             border-radius: 4px;
+            margin: 5px;
             /* double the actual width */
-            width: 128px;
+            width: 80px;
             /* keep aspect ratio */
             height: auto;
         }
