@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Character Generator</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="dark-mode">
+    <details class="mb-3">
+        <summary class="font-weight-bold">Instructions:</summary>
+        <p>1. Ensure Generator.html is located in CozyPeopleAssetPack folder</p>
+        <p>2. Open Generator.html</p>
+        <p>3. Click Choose files to import the assets (Character_Generator Folder)</p>
+        <p>4. Voila!</p>
+    </details>
+    <br />
+    <label class="btn btn-primary mb-3">
+        Select Character_Generator
+        <input type="file" id="selectFiles" onchange="initializeCharacterAssetsFolder()" style="display: none;" multiple
+            webkitdirectory />
+    </label>
+    <br />
+    <div id="selection" class="d-flex flex-wrap mb-3"></div>
+    <div id="right-click-save" style="display: none;">Right-click to save</div>
+    <br />
+    <div class="containers">
+        <div id="base-sections" style="display: none;">
+            <canvas id="canvas" class="canvas-style-base" width="576" height="3584"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+
+        // Asset arrays
+        var playerBase = [[]];
+        var chest = [[]];
+        var legs = [[]];
+        var feet = [[]];
+        var hands = [[]];
+        var hair = [[]];
+        var accessories = [[]];
+        var mounts = [[]];
+        var tools = [[]];
+
+        // Selections
+        var selectedPlayerBase = [1];
+        var selectedChest = [0];
+        var selectedLegs = [0];
+        var selectedFeet = [0];
+        var selectedHands = [0];
+        var selectedHair = [0];
+        var selectedAccessories = [0];
+        var selectedMounts = [0];
+        var selectedTools = [0];
+
+        // File selection
+        document.getElementById("selectFiles").onchange = function () {
+            initializeCharacterAssetsFolder();
+        };
+
+        function initializeCharacterAssetsFolder() {
+            document.getElementById("right-click-save").style.display = "block";
+            document.getElementById("base-sections").style.display = "block";
+            document.querySelector('.canvas-style-base').style.display = 'inline-block';
+            const selectedFiles = Array.from(document.getElementById("selectFiles").files).map(file => ({
+                name: file.name,
+                path: file.webkitRelativePath
+            }));
+
+            selectedFiles.forEach(composeResource);
+            sort();
+            initializeOptions();
+            draw();
+        }
+
+        function composeResource(file) {
+            const path = file.path.split("/");
+
+            switch (path[1]) {
+                case "Player_Base": generateResource(playerBase, file); break;
+                case "Chest": generateResource(chest, file); break;
+                case "Legs": generateResource(legs, file); break;
+                case "Feet": generateResource(feet, file); break;
+                case "Hands": generateResource(hands, file); break;
+                case "Hair": generateResource(hair, file); break;
+                case "Accessories": generateResource(accessories, file); break;
+                case "Player_Mounts": generateResource(mounts, file); break;
+                case "Tools": generateResource(tools, file); break;
+            }
+        }
+
+        function generateResource(arr, file) {
+            arr[0].push(file);
+        }
+
+        function sort() {
+            [playerBase, chest, legs, feet, hands, hair, accessories, mounts, tools].forEach(assetGroup => {
+                assetGroup.forEach(sortInnerArr);
+            });
+        }
+
+        function sortInnerArr(arr) {
+            arr.sort((a, b) => a.name.localeCompare(b.name));
+            arr.unshift({ name: "n/a", path: "" });
+        }
+
+        function initializeOptions() {
+            const div = document.getElementById("selection");
+            div.innerHTML = '';
+
+            function addOptionGroup(label, arr, selectedVar, id) {
+                div.appendChild(renderOptionGroup(label, arr[0].map(x => x.name), id, selectedVar, function (e) {
+                    window[id] = Array.from(e.target.selectedOptions).map(opt => opt.index);
+                    draw();
+                }));
+            }
+
+            addOptionGroup("Player Base", playerBase, selectedPlayerBase, "selectedPlayerBase");
+            addOptionGroup("Chest", chest, selectedChest, "selectedChest");
+            addOptionGroup("Legs", legs, selectedLegs, "selectedLegs");
+            addOptionGroup("Feet", feet, selectedFeet, "selectedFeet");
+            addOptionGroup("Hands", hands, selectedHands, "selectedHands");
+            addOptionGroup("Hair", hair, selectedHair, "selectedHair");
+            addOptionGroup("Accessories", accessories, selectedAccessories, "selectedAccessories");
+            addOptionGroup("Mounts", mounts, selectedMounts, "selectedMounts");
+            addOptionGroup("Tools", tools, selectedTools, "selectedTools");
+
+            draw();
+        }
+
+        function renderOptionGroup(label, options, id, selected, onChange) {
+            const group = document.createElement("div");
+            group.className = "select-group";
+
+            const labelElem = document.createElement("label");
+            labelElem.innerText = label;
+            group.appendChild(labelElem);
+
+            const select = document.createElement("select");
+            select.id = id;
+            select.multiple = true;
+            select.size = 5;
+            select.addEventListener("change", onChange);
+
+            options.forEach((option, i) => {
+                const opt = document.createElement("option");
+                opt.value = i;
+                opt.innerText = option;
+                if (selected.includes(i)) opt.selected = true;
+                select.appendChild(opt);
+            });
+
+            group.appendChild(select);
+            return group;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const imgPaths = [];
+
+            function collectPaths(arr, selected) {
+                selected.forEach(index => {
+                    if (index > 0 && arr[0][index] && arr[0][index].path) {
+                        imgPaths.push(arr[0][index].path);
+                    }
+                });
+            }
+
+            collectPaths(playerBase, selectedPlayerBase);
+            collectPaths(chest, selectedChest);
+            collectPaths(legs, selectedLegs);
+            collectPaths(feet, selectedFeet);
+            collectPaths(hands, selectedHands);
+            collectPaths(hair, selectedHair);
+            collectPaths(accessories, selectedAccessories);
+            collectPaths(mounts, selectedMounts);
+            collectPaths(tools, selectedTools);
+
+            render(imgPaths, 0);
+        }
+
+        function render(paths, index) {
+            if (index >= paths.length) return;
+            const img = new Image();
+            img.src = paths[index];
+            img.onload = () => {
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                render(paths, index + 1);
+            };
+        }
+    </script>
+
+    <!-- Bootstrap JS (Optional) -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <style>
+        body {
+            padding: 25px;
+            background-color: #f0f0f0;
+            color: #333;
+            font-family: Arial, sans-serif;
+            font-size: 18px;
+            line-height: 1.6;
+            transition: background-color 0.5s ease, color 0.5s ease;
+        }
+
+        .dark-mode {
+            background-color: #121212;
+            color: #ffffff;
+        }
+
+        details {
+            margin-bottom: 15px;
+        }
+
+        summary {
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 8px 12px;
+            background-color: #007bff;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            border: none;
+        }
+
+        .btn:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-primary input {
+            margin-left: 10px;
+        }
+
+        /* Selection UI Styles */
+        #selection {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 30px;
+            align-items: flex-start;
+        }
+
+        .select-group {
+            display: flex;
+            flex-direction: column;
+            min-width: 160px;
+            font-size: 16px;
+            color: inherit;
+        }
+
+        .select-group label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 17px;
+        }
+
+        .select-group select {
+            width: 100%;
+            min-height: 150px;
+            padding: 6px 10px;
+            font-size: 15px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            color: #000;
+            box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.05);
+            transition: border-color 0.3s;
+        }
+
+        .select-group select:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+
+        .dark-mode .select-group select {
+            background-color: #222;
+            color: #fff;
+            border: 1px solid #444;
+        }
+
+        .highlight-selected {
+            background-color: #007bff;
+            color: white;
+            font-weight: bold;
+        }
+
+        .containers {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        #base-sections {
+            margin-right: 20px;
+        }
+
+        .canvas-style-base {
+            border: 2px solid #007bff;
+            border-radius: 5px;
+            margin: 10px;
+            padding: 10px;
+            max-width: 100%;
+            height: auto;
+            vertical-align: top;
+            display: none;
+            /* Hidden until assets are loaded */
+        }
+
+        .canvas-style-cut {
+            border: 2px solid #007bff;
+            border-radius: 5px;
+            margin: 10px;
+            padding: 10px;
+            display: block;
+        }
+    </style>
+</body>
+
+</html>
