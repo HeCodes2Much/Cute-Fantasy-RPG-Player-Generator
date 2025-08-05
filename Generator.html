@@ -20,6 +20,10 @@
     <div id="right-click-save" style="display: none;">Right-click to save</div>
     <br />
     <div class="containers">
+        <div id="animations" style="display: flex; gap: 10px;"></div>
+    </div>
+    <br />
+    <div class="containers">
         <div id="base-sections" style="display: none;">
             <canvas id="canvas" class="canvas-style-base" width="576" height="3584"></canvas>
         </div>
@@ -178,8 +182,68 @@
             render(imgPaths, 0);
         }
 
+        const frameSize = 64;
+        const numAnimations = 6;
+        const framesPerAnimation = 6;
+        const animationSpeed = 200; // ms per frame
+
+        function createAnimationCanvasesFromMainCanvas() {
+            const container = document.getElementById('animations');
+            container.innerHTML = ''; // clear old ones
+
+            const framesByAnimation = []; // 6 arrays, each with 6 frames
+
+            for (let animIndex = 0; animIndex < numAnimations; animIndex++) {
+                const frames = [];
+
+                for (let frameIndex = 0; frameIndex < framesPerAnimation; frameIndex++) {
+                    const frameCanvas = document.createElement('canvas');
+                    frameCanvas.width = frameSize;
+                    frameCanvas.height = frameSize;
+                    const frameCtx = frameCanvas.getContext('2d');
+
+                    frameCtx.drawImage(
+                        canvas,
+                        frameIndex * frameSize,  // X (columns → left to right)
+                        animIndex * frameSize,   // Y (rows → top to bottom)
+                        frameSize,
+                        frameSize,
+                        0,
+                        0,
+                        frameSize,
+                        frameSize
+                    );
+
+                    frames.push(frameCanvas);
+                }
+
+                framesByAnimation.push(frames);
+            }
+
+            // Create visible animation canvases and start animating
+            framesByAnimation.forEach((frames, animIndex) => {
+                const animCanvas = document.createElement('canvas');
+                animCanvas.width = frameSize;
+                animCanvas.height = frameSize;
+                const animCtx = animCanvas.getContext('2d');
+
+                container.appendChild(animCanvas);
+
+                let currentFrame = 0;
+                setInterval(() => {
+                    animCtx.clearRect(0, 0, frameSize, frameSize);
+                    animCtx.drawImage(frames[currentFrame], 0, 0);
+                    currentFrame = (currentFrame + 1) % frames.length;
+                }, animationSpeed);
+            });
+        }
+
+
         function render(files, index) {
-            if (index >= files.length) return;
+            if (index >= files.length) {
+                createAnimationCanvasesFromMainCanvas(); // <– Add this
+                return;
+            }
             const img = new Image();
             img.src = URL.createObjectURL(files[index]);
             img.onload = () => {
@@ -303,15 +367,18 @@
         }
 
         .canvas-style-base {
+            /* half the actual width */
+            width: 288px;
+            /* keep aspect ratio */
+            height: auto;
             border: 2px solid #007bff;
             border-radius: 5px;
             margin: 10px;
             padding: 10px;
-            max-width: 100%;
             height: auto;
             vertical-align: top;
-            display: none;
             /* Hidden until assets are loaded */
+            display: none;
         }
 
         .canvas-style-cut {
@@ -320,6 +387,15 @@
             margin: 10px;
             padding: 10px;
             display: block;
+        }
+
+        #animations canvas {
+            border: 1px solid #007bff;
+            border-radius: 4px;
+            /* double the actual width */
+            width: 128px;
+            /* keep aspect ratio */
+            height: auto;
         }
     </style>
 </body>
