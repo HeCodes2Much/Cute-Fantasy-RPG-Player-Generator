@@ -16,6 +16,10 @@
             <input type="file" id="selectFiles" onchange="initializeCharacterAssetsFolder()" style="display: none;"
                 multiple webkitdirectory />
         </label>
+        <label id="animations-number" style="display:none; margin-bottom:8px;">
+            <input type="checkbox" id="toggleNumbers" />
+            Show animation numbers.
+        </label>
         <div id="selection" class="d-flex flex-wrap mb-3"></div>
         <div id="right-click-save" style="display: none;">Right-click to save</div>
     </div>
@@ -23,7 +27,9 @@
     <div class="containers" style="width: 75%;">
         <div id="animations" style="display: block;"></div>
     </div>
+
     <div class="containers" style="width: 20%;">
+        <div id="final-exported-canvas"></div>
         <div id="base-sections" style="display: none;">
             <canvas id="canvas" class="canvas-style-base" width="576" height="3584"></canvas>
         </div>
@@ -34,40 +40,29 @@
         const ctx = canvas.getContext("2d");
 
         // Asset arrays
-        var playerBase = [[]];
-        var chest = [[]];
-        var legs = [[]];
-        var feet = [[]];
-        var hands = [[]];
-        var hair = [[]];
-        var accessories = [[]];
-        var mounts = [[]];
-        var tools = [[]];
+        var playerBase = [[]], chest = [[]], legs = [[]], feet = [[]], hands = [[]],
+            hair = [[]], accessories = [[]], mounts = [[]], tools = [[]];
 
         // Selections
-        var selectedPlayerBase = [1];
-        var selectedChest = [0];
-        var selectedLegs = [0];
-        var selectedFeet = [0];
-        var selectedHands = [0];
-        var selectedHair = [0];
-        var selectedAccessories = [0];
-        var selectedMounts = [0];
-        var selectedTools = [0];
+        var selectedPlayerBase = [1], selectedChest = [0], selectedLegs = [0], selectedFeet = [0],
+            selectedHands = [0], selectedHair = [0], selectedAccessories = [0], selectedMounts = [0], selectedTools = [0];
 
-        // File selection
         document.getElementById("selectFiles").onchange = function () {
             initializeCharacterAssetsFolder();
         };
 
+        document.getElementById("toggleNumbers").onchange = function () {
+            createAnimationCanvasesFromMainCanvas();
+        };
+
         function initializeCharacterAssetsFolder() {
             document.getElementById("right-click-save").style.display = "block";
-            document.getElementById("base-sections").style.display = "block";
-            document.querySelector('.canvas-style-base').style.display = 'inline-block';
+            document.getElementById("animations-number").style.display = "block";
+
             const selectedFiles = Array.from(document.getElementById("selectFiles").files).map(file => ({
                 name: file.name,
                 path: file.webkitRelativePath,
-                file: file // ✅ add this
+                file: file
             }));
 
             selectedFiles.forEach(composeResource);
@@ -98,13 +93,11 @@
 
         function sort() {
             [playerBase, chest, legs, feet, hands, hair, accessories, mounts, tools].forEach(assetGroup => {
-                assetGroup.forEach(sortInnerArr);
+                assetGroup.forEach(arr => {
+                    arr.sort((a, b) => a.name.localeCompare(b.name));
+                    arr.unshift({ name: "n/a", file: null });
+                });
             });
-        }
-
-        function sortInnerArr(arr) {
-            arr.sort((a, b) => a.name.localeCompare(b.name));
-            arr.unshift({ name: "n/a", file: null }); // Use file instead of path
         }
 
         function initializeOptions() {
@@ -113,7 +106,7 @@
 
             function addOptionGroup(label, arr, selectedVar, id) {
                 div.appendChild(renderOptionGroup(label, arr[0].map(x => x.name), id, selectedVar, function (e) {
-                    window[id] = Array.from(e.target.selectedOptions).map(opt => opt.index);
+                    window[id] = Array.from(e.target.selectedOptions).map(opt => parseInt(opt.value));
                     draw();
                 }));
             }
@@ -157,49 +150,108 @@
             return group;
         }
 
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const imgPaths = [];
-
-            function collectPaths(arr, selected) {
-                selected.forEach(index => {
-                    if (index > 0 && arr[0][index] && arr[0][index].file) {
-                        imgPaths.push(arr[0][index].file); // push File object
-                    }
-                });
-            }
-
-            collectPaths(playerBase, selectedPlayerBase);
-            collectPaths(chest, selectedChest);
-            collectPaths(legs, selectedLegs);
-            collectPaths(feet, selectedFeet);
-            collectPaths(hands, selectedHands);
-            collectPaths(hair, selectedHair);
-            collectPaths(accessories, selectedAccessories);
-            collectPaths(mounts, selectedMounts);
-            collectPaths(tools, selectedTools);
-
-            render(imgPaths, 0);
-        }
-
         const frameSize = 64;
         const numAnimations = 56;
-        const animationSpeed = 200; // ms per frame
+        const animationSpeed = 200;
 
-        // Add all 56 numbers here, each corresponding to the number of frames for that animation row.
         const framesPerAnimationArray = [
             6, 6, 6, 6, 6, 6, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 6, 8, 8, 8, 1, 1, 1, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 9, 8, 9, 8, 9, 8, 2, 2, 2, 6, 6, 6,
             // ... continue filling this array up to 56 values
         ];
 
+        const drawPositions = {
+            "Player_Base": [0, 0],
+            "Chest": [0, 0],
+            "Legs": [0, 0],
+            "Feet": [0, 0],
+            "Hands": [0, 0],
+            "Hair": [0, 0],
+            "Accessories": [0, 0],
+            "Player_Mounts": [0, 50],
+            "Tools": [0, 0]
+        };
+
+        const toolFolderFileOffsets = {
+            "Bow": {
+                "default": [0, 0]
+            },
+            "Fishing_Rod": {
+                "default": [0, 0]
+            },
+            "Iron": {
+                "Iron_Sword": [1, 0],
+                "Iron_Tools": [2, 0],
+                "default": [0, 0]
+            },
+            "Other": {
+                "default": [0, 0]
+            }
+        };
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const imgFiles = [];
+
+            function collect(arr, selected, name) {
+                if (arr === mounts && selected[0] === 0) return;
+
+                selected.forEach(index => {
+                    const fileObj = arr[0][index];
+                    if (index > 0 && fileObj && fileObj.file) {
+                        let [x, y] = drawPositions[name] || [0, 0];
+                        if (name === "Tools") {
+                            const folder = fileObj.path.split("/")[2]; // e.g., Iron
+                            const toolName = fileObj.name.split(".")[0];
+                            const toolOffsets = toolFolderFileOffsets[folder] || {};
+                            const [tx, ty] = toolOffsets[toolName] || toolOffsets["default"] || [0, 0];
+                            x = tx;
+                            y = ty;
+                        }
+
+                        imgFiles.push({ file: fileObj.file, x: x * frameSize, y: y * frameSize });
+                    }
+                });
+            }
+
+            collect(playerBase, selectedPlayerBase, "Player_Base");
+            collect(chest, selectedChest, "Chest");
+            collect(legs, selectedLegs, "Legs");
+            collect(feet, selectedFeet, "Feet");
+            collect(hands, selectedHands, "Hands");
+            collect(hair, selectedHair, "Hair");
+            collect(accessories, selectedAccessories, "Accessories");
+            collect(mounts, selectedMounts, "Player_Mounts");
+            collect(tools, selectedTools, "Tools");
+
+            render(imgFiles, 0);
+        }
+
+        function render(imgs, index) {
+            if (index >= imgs.length) {
+                createAnimationCanvasesFromMainCanvas();
+                return;
+            }
+
+            const img = new Image();
+            img.src = URL.createObjectURL(imgs[index].file);
+            img.onload = () => {
+                ctx.drawImage(img, imgs[index].x, imgs[index].y);
+                render(imgs, index + 1);
+            };
+        }
+
         function createAnimationCanvasesFromMainCanvas() {
             const container = document.getElementById('animations');
-            container.innerHTML = ''; // clear old ones
+            container.innerHTML = '';
 
             const framesByAnimation = [];
 
+            const skipMounts = selectedMounts.length === 1 && selectedMounts[0] === 0;
+
             for (let animIndex = 0; animIndex < numAnimations; animIndex++) {
-                const frameCount = framesPerAnimationArray[animIndex]; // ✅ use array here
+                if (skipMounts && animIndex >= 50 && animIndex <= 56) continue;
+
+                const frameCount = framesPerAnimationArray[animIndex];
                 const frames = [];
 
                 for (let frameIndex = 0; frameIndex < frameCount; frameIndex++) {
@@ -210,8 +262,8 @@
 
                     frameCtx.drawImage(
                         canvas,
-                        frameIndex * frameSize,  // X
-                        animIndex * frameSize,   // Y
+                        frameIndex * frameSize,
+                        animIndex * frameSize,
                         frameSize,
                         frameSize,
                         0,
@@ -220,13 +272,19 @@
                         frameSize
                     );
 
+                    // Draw index text
+                    if (document.getElementById('toggleNumbers')?.checked) {
+                        frameCtx.fillStyle = 'white';
+                        frameCtx.font = '8px sans-serif';
+                        frameCtx.fillText(animIndex, 2, 10);
+                    }
+
                     frames.push(frameCanvas);
                 }
 
                 framesByAnimation.push(frames);
             }
 
-            // Create visible animation canvases and start animating
             framesByAnimation.forEach((frames) => {
                 const animCanvas = document.createElement('canvas');
                 animCanvas.width = frameSize;
@@ -242,22 +300,63 @@
                     currentFrame = (currentFrame + 1) % frames.length;
                 }, animationSpeed);
             });
+
+            // ✅ Generate full animation sheet from active frames
+            createFullExportedCanvasFromActiveAnimations();
         }
 
+        function createFullExportedCanvasFromActiveAnimations() {
+            const skipMounts = selectedMounts.length === 1 && selectedMounts[0] === 0;
+            let totalHeight = 0;
 
-        function render(files, index) {
-            if (index >= files.length) {
-                createAnimationCanvasesFromMainCanvas(); // <– Add this
-                return;
+            const animFrames = [];
+
+            for (let animIndex = 0; animIndex < numAnimations; animIndex++) {
+                if (skipMounts && animIndex >= 50 && animIndex <= 56) continue;
+
+                const frameCount = framesPerAnimationArray[animIndex];
+                animFrames.push({ animIndex, frameCount });
+                totalHeight += frameSize;
             }
-            const img = new Image();
-            img.src = URL.createObjectURL(files[index]);
-            img.onload = () => {
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                render(files, index + 1);
-            };
+
+            const finalCanvas = document.createElement('canvas');
+            finalCanvas.width = Math.max(...animFrames.map(a => a.frameCount)) * frameSize;
+            finalCanvas.height = totalHeight;
+
+            const finalCtx = finalCanvas.getContext('2d');
+
+            let currentY = 0;
+
+            for (const { animIndex, frameCount } of animFrames) {
+                for (let frameIndex = 0; frameIndex < frameCount; frameIndex++) {
+                    finalCtx.drawImage(
+                        canvas,
+                        frameIndex * frameSize,
+                        animIndex * frameSize,
+                        frameSize,
+                        frameSize,
+                        frameIndex * frameSize,
+                        currentY,
+                        frameSize,
+                        frameSize
+                    );
+                }
+                currentY += frameSize;
+            }
+
+            // Add to DOM
+            const exportContainer = document.getElementById('final-exported-canvas');
+            finalCanvas.id = 'final-canvas';
+            finalCanvas.className = 'final-canvas';
+            const oldCanvas = document.getElementById('final-canvas');
+            if (oldCanvas) {
+                exportContainer.replaceChild(finalCanvas, oldCanvas);
+            } else {
+                exportContainer.appendChild(finalCanvas);
+            }
         }
     </script>
+
 
     <!-- Bootstrap JS (Optional) -->
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
@@ -368,10 +467,6 @@
             margin-bottom: 20px;
         }
 
-        #base-sections {
-            margin-right: 20px;
-        }
-
         .canvas-style-base {
             /* half the actual width */
             width: 288px;
@@ -380,16 +475,18 @@
             border: 2px solid #007bff;
             border-radius: 5px;
             vertical-align: top;
-            /* Hidden until assets are loaded */
-            display: none;
         }
 
-        .canvas-style-cut {
+        .final-canvas {
+            /* half the actual width */
+            width: 288px;
+            /* keep aspect ratio */
+            height: auto;
             border: 2px solid #007bff;
             border-radius: 5px;
-            margin: 10px;
-            padding: 10px;
-            display: block;
+            vertical-align: top;
+            /* Hidden until assets are loaded */
+            display: inline-block;
         }
 
         #animations canvas {
