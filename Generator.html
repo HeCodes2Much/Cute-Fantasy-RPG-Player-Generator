@@ -41,11 +41,13 @@
 
         // Asset arrays
         var playerBase = [[]], chest = [[]], legs = [[]], feet = [[]], hands = [[]],
-            hair = [[]], accessories = [[]], mounts = [[]], tools = [[]];
+            hair = [[]], accessories = [[]], mounts = [[]];
+        var toolsByFolder = {};
+        var selectedToolsByFolder = {};
 
         // Selections
         var selectedPlayerBase = [1], selectedChest = [0], selectedLegs = [0], selectedFeet = [0],
-            selectedHands = [0], selectedHair = [0], selectedAccessories = [0], selectedMounts = [0], selectedTools = [0];
+            selectedHands = [0], selectedHair = [0], selectedAccessories = [0], selectedMounts = [0];
 
         document.getElementById("selectFiles").onchange = function () {
             initializeCharacterAssetsFolder();
@@ -83,7 +85,16 @@
                 case "Hair": generateResource(hair, fileObj); break;
                 case "Accessories": generateResource(accessories, fileObj); break;
                 case "Player_Mounts": generateResource(mounts, fileObj); break;
-                case "Tools": generateResource(tools, fileObj); break;
+                case "Tools":
+                    const folder = path[2];
+                    if (!toolsByFolder[folder]) {
+                        toolsByFolder[folder] = [];
+                        selectedToolsByFolder[folder] = [0];
+                    }
+                    toolsByFolder[folder].push(fileObj);
+                    break;
+                default:
+                    console.warn("Unrecognized folder:", path[1], "for file:", fileObj.name);
             }
         }
 
@@ -92,11 +103,16 @@
         }
 
         function sort() {
-            [playerBase, chest, legs, feet, hands, hair, accessories, mounts, tools].forEach(assetGroup => {
+            [playerBase, chest, legs, feet, hands, hair, accessories, mounts].forEach(assetGroup => {
                 assetGroup.forEach(arr => {
                     arr.sort((a, b) => a.name.localeCompare(b.name));
                     arr.unshift({ name: "n/a", file: null });
                 });
+            });
+
+            Object.keys(toolsByFolder).forEach(folder => {
+                toolsByFolder[folder].sort((a, b) => a.name.localeCompare(b.name));
+                toolsByFolder[folder].unshift({ name: "n/a", file: null });
             });
         }
 
@@ -106,7 +122,12 @@
 
             function addOptionGroup(label, arr, selectedVar, id) {
                 div.appendChild(renderOptionGroup(label, arr[0].map(x => x.name), id, selectedVar, function (e) {
-                    window[id] = Array.from(e.target.selectedOptions).map(opt => parseInt(opt.value));
+                    if (id.startsWith("selectedToolsByFolder_")) {
+                        const folderName = id.replace("selectedToolsByFolder_", "");
+                        selectedToolsByFolder[folderName] = Array.from(e.target.selectedOptions).map(opt => parseInt(opt.value));
+                    } else {
+                        window[id] = Array.from(e.target.selectedOptions).map(opt => parseInt(opt.value));
+                    }
                     draw();
                 }));
             }
@@ -119,7 +140,11 @@
             addOptionGroup("Hair", hair, selectedHair, "selectedHair");
             addOptionGroup("Accessories", accessories, selectedAccessories, "selectedAccessories");
             addOptionGroup("Mounts", mounts, selectedMounts, "selectedMounts");
-            addOptionGroup("Tools", tools, selectedTools, "selectedTools");
+
+            Object.keys(toolsByFolder).forEach(folder => {
+                const folderId = `selectedToolsByFolder_${folder}`;
+                addOptionGroup(`Tools - ${folder}`, [toolsByFolder[folder]], selectedToolsByFolder[folder], folderId);
+            });
 
             draw();
         }
@@ -152,11 +177,10 @@
 
         const frameSize = 64;
         const numAnimations = 56;
-        const animationSpeed = 200;
+        const animationSpeed = 250;
 
         const framesPerAnimationArray = [
-            6, 6, 6, 6, 6, 6, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 6, 8, 8, 8, 1, 1, 1, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 9, 8, 9, 8, 9, 8, 2, 2, 2, 6, 6, 6,
-            // ... continue filling this array up to 56 values
+            6, 6, 6, 6, 6, 6, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 6, 8, 8, 8, 1, 1, 1, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 9, 8, 9, 8, 9, 8, 2, 2, 2, 6, 6, 6
         ];
 
         const drawPositions = {
@@ -172,21 +196,53 @@
         };
 
         const toolFolderFileOffsets = {
-            "Bow": {
+            "Utility": {
+                "Iron_Tools": [0, 32],
+                "Fishing_Rod": {
+                    "default": [0, 44]
+                },
                 "default": [0, 0]
             },
-            "Fishing_Rod": {
-                "default": [0, 0]
-            },
-            "Iron": {
-                "Iron_Sword": [1, 0],
-                "Iron_Tools": [2, 0],
+            "Combat": {
+                "Bow": {
+                    "default": [0, 29]
+                },
+                "Sword": {
+                    "Iron_Sword": [0, 6],
+                    "default": [0, 0]
+                },
                 "default": [0, 0]
             },
             "Other": {
+                "Lantern": {
+                    "Lantern_Idle": [0, 20],
+                    "Lantern_Running": [0, 23],
+                    "default": [0, 0]
+                },
+                "Torch": {
+                    "Torch_Idle": [0, 20],
+                    "Torch_Running": [0, 23],
+                    "default": [0, 0]
+                },
                 "default": [0, 0]
             }
         };
+
+        const meleeToolNames = ["Sword"]; // Add all melee tool base names you have
+        const rangedToolNames = ["Bow"]; // Add all ranged tool base names you have
+        const fishingToolNames = ["Fishing_Rod"]; // Add all fishing tool base names you have
+        const utilityToolNames = ["Tools"]; // Add all utility tool base names you have
+        const idleToolNames = ["Idle"]; // Add all idle tool base names you have
+        const runningToolNames = ["Running"]; // Add all running tool base names you have
+
+        const mountAnimations = [50, 51, 52, 53, 54, 55, 56];
+
+        const meleeAnimations = [6, 7, 8, 9, 10, 11, 12, 13, 14];
+        const rangedAnimations = [29, 30, 31];
+        const fishingAnimations = [44, 45, 46, 47, 48, 49];
+        const utilityAnimations = [32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43];
+        const idleAnimations = [20, 21, 22];
+        const runningAnimations = [23, 24, 25];
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -199,15 +255,6 @@
                     const fileObj = arr[0][index];
                     if (index > 0 && fileObj && fileObj.file) {
                         let [x, y] = drawPositions[name] || [0, 0];
-                        if (name === "Tools") {
-                            const folder = fileObj.path.split("/")[2]; // e.g., Iron
-                            const toolName = fileObj.name.split(".")[0];
-                            const toolOffsets = toolFolderFileOffsets[folder] || {};
-                            const [tx, ty] = toolOffsets[toolName] || toolOffsets["default"] || [0, 0];
-                            x = tx;
-                            y = ty;
-                        }
-
                         imgFiles.push({ file: fileObj.file, x: x * frameSize, y: y * frameSize });
                     }
                 });
@@ -221,7 +268,73 @@
             collect(hair, selectedHair, "Hair");
             collect(accessories, selectedAccessories, "Accessories");
             collect(mounts, selectedMounts, "Player_Mounts");
-            collect(tools, selectedTools, "Tools");
+
+            Object.keys(toolsByFolder).forEach(folder => {
+                const toolList = toolsByFolder[folder];
+                const selectedList = selectedToolsByFolder[folder];
+
+                selectedList.forEach(index => {
+                    const fileObj = toolList[index];
+                    if (index > 0 && fileObj && fileObj.file) {
+                        let [x, y] = drawPositions["Tools"];
+                        const toolName = fileObj.name.split(".")[0]; // e.g. "Iron_Sword"
+                        const folderOffsets = toolFolderFileOffsets[folder] || {};
+
+                        // Function to find nested offsets by partial matching:
+                        function findOffsets(folderOffsets, toolName) {
+                            const categories = Object.keys(folderOffsets).filter(cat => cat !== "default");
+
+                            // 1. Exact match: toolName === category
+                            if (categories.includes(toolName)) {
+                                const catOffsets = folderOffsets[toolName];
+                                if (Array.isArray(catOffsets)) {
+                                    return catOffsets;
+                                } else if (catOffsets && typeof catOffsets === "object") {
+                                    if (toolName in catOffsets) {
+                                        return catOffsets[toolName];
+                                    }
+                                    if ("default" in catOffsets) {
+                                        return catOffsets["default"];
+                                    }
+                                }
+                            }
+
+                            // 2. Suffix or prefix matching with category name
+                            for (const category of categories) {
+                                if (toolName.endsWith(`_${category}`) || toolName.startsWith(`${category}_`)) {
+                                    const catOffsets = folderOffsets[category];
+                                    if (typeof catOffsets === "object" && catOffsets !== null) {
+                                        if (toolName in catOffsets) {
+                                            return catOffsets[toolName];
+                                        }
+
+                                        if ("default" in catOffsets) {
+                                            return catOffsets["default"];
+                                        }
+                                    }
+                                }
+                            }
+
+                            // 3. Fallback: folder-level direct match
+                            if (toolName in folderOffsets) {
+                                return folderOffsets[toolName];
+                            }
+
+                            // 4. Fallback: folder-level default
+                            return folderOffsets["default"] || [0, 0];
+                        }
+
+
+                        const [tx, ty] = findOffsets(folderOffsets, toolName);
+
+                        x = tx;
+                        y = ty;
+
+                        imgFiles.push({ file: fileObj.file, x: x * frameSize, y: y * frameSize });
+                    }
+                });
+            });
+
 
             render(imgFiles, 0);
         }
@@ -240,6 +353,18 @@
             };
         }
 
+        function hasSelectedTool(folderName, toolNames) {
+            if (!selectedToolsByFolder[folderName]) return false;
+            const selectedIndices = selectedToolsByFolder[folderName];
+            const toolList = toolsByFolder[folderName] || [];
+
+            return selectedIndices.some(index => {
+                if (index === 0) return false; // index 0 is 'n/a'
+                const toolName = toolList[index]?.name || "";
+                return toolNames.some(name => toolName.includes(name));
+            });
+        }
+
         function createAnimationCanvasesFromMainCanvas() {
             const container = document.getElementById('animations');
             container.innerHTML = '';
@@ -247,9 +372,22 @@
             const framesByAnimation = [];
 
             const skipMounts = selectedMounts.length === 1 && selectedMounts[0] === 0;
+            // Detect if melee or ranged tools are selected
+            const hasMelee = hasSelectedTool("Combat", meleeToolNames);
+            const hasRanged = hasSelectedTool("Combat", rangedToolNames);
+            const hasFishing = hasSelectedTool("Utility", fishingToolNames)
+            const hasUtility = hasSelectedTool("Utility", utilityToolNames)
+            const hasIdle = hasSelectedTool("Other", idleToolNames)
+            const hasRunning = hasSelectedTool("Other", runningToolNames)
 
             for (let animIndex = 0; animIndex < numAnimations; animIndex++) {
-                if (skipMounts && animIndex >= 50 && animIndex <= 56) continue;
+                if (skipMounts && mountAnimations.includes(animIndex)) continue;
+                if (!hasMelee && meleeAnimations.includes(animIndex)) continue;
+                if (!hasRanged && rangedAnimations.includes(animIndex)) continue;
+                if (!hasFishing && fishingAnimations.includes(animIndex)) continue;
+                if (!hasUtility && utilityAnimations.includes(animIndex)) continue;
+                if (!hasIdle && idleAnimations.includes(animIndex)) continue;
+                if (!hasRunning && runningAnimations.includes(animIndex)) continue;
 
                 const frameCount = framesPerAnimationArray[animIndex];
                 const frames = [];
@@ -272,7 +410,6 @@
                         frameSize
                     );
 
-                    // Draw index text
                     if (document.getElementById('toggleNumbers')?.checked) {
                         frameCtx.fillStyle = 'white';
                         frameCtx.font = '8px sans-serif';
@@ -301,20 +438,34 @@
                 }, animationSpeed);
             });
 
-            // ✅ Generate full animation sheet from active frames
             createFullExportedCanvasFromActiveAnimations();
         }
 
         function createFullExportedCanvasFromActiveAnimations() {
             const skipMounts = selectedMounts.length === 1 && selectedMounts[0] === 0;
+            // Detect if melee or ranged tools are selected
+            const hasMelee = hasSelectedTool("Combat", meleeToolNames);
+            const hasRanged = hasSelectedTool("Combat", rangedToolNames);
+            const hasFishing = hasSelectedTool("Utility", fishingToolNames)
+            const hasUtility = hasSelectedTool("Utility", utilityToolNames)
+            const hasIdle = hasSelectedTool("Other", idleToolNames)
+            const hasRunning = hasSelectedTool("Other", runningToolNames)
+
             let totalHeight = 0;
 
             const animFrames = [];
 
             for (let animIndex = 0; animIndex < numAnimations; animIndex++) {
-                if (skipMounts && animIndex >= 50 && animIndex <= 56) continue;
+                if (skipMounts && mountAnimations.includes(animIndex)) continue;
+                if (!hasMelee && meleeAnimations.includes(animIndex)) continue;
+                if (!hasRanged && rangedAnimations.includes(animIndex)) continue;
+                if (!hasFishing && fishingAnimations.includes(animIndex)) continue;
+                if (!hasUtility && utilityAnimations.includes(animIndex)) continue;
+                if (!hasIdle && idleAnimations.includes(animIndex)) continue;
+                if (!hasRunning && runningAnimations.includes(animIndex)) continue;
 
                 const frameCount = framesPerAnimationArray[animIndex];
+
                 animFrames.push({ animIndex, frameCount });
                 totalHeight += frameSize;
             }
@@ -344,7 +495,6 @@
                 currentY += frameSize;
             }
 
-            // Add to DOM
             const exportContainer = document.getElementById('final-exported-canvas');
             finalCanvas.id = 'final-canvas';
             finalCanvas.className = 'final-canvas';
@@ -356,7 +506,6 @@
             }
         }
     </script>
-
 
     <!-- Bootstrap JS (Optional) -->
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
