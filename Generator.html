@@ -11,7 +11,7 @@
 --Created:
 --   Thu 07 August 2025, 01:46:29 PM [GMT+1]
 --Modified:
---   Thu 07 August 2025, 01:46:53 PM [GMT+1]
+--   Thu 07 August 2025, 02:00:07 PM [GMT+1]
 --
 --Description:
 --   Cute Fantasy RPG – Player Sprite Creator Tool
@@ -97,6 +97,7 @@
 
         function composeResource(fileObj) {
             const path = fileObj.path.split("/");
+            if (!path[path.length - 1].endsWith(".png")) return
 
             switch (path[1]) {
                 case "Player_Base": generateResource(playerBase, fileObj); break;
@@ -128,13 +129,13 @@
             [playerBase, chest, legs, feet, hands, hair, accessories, mounts].forEach(assetGroup => {
                 assetGroup.forEach(arr => {
                     arr.sort((a, b) => a.name.localeCompare(b.name));
-                    arr.unshift({ name: "n/a", file: null });
+                    arr.unshift({ name: "none", file: null });
                 });
             });
 
             Object.keys(toolsByFolder).forEach(folder => {
                 toolsByFolder[folder].sort((a, b) => a.name.localeCompare(b.name));
-                toolsByFolder[folder].unshift({ name: "n/a", file: null });
+                toolsByFolder[folder].unshift({ name: "none", file: null });
             });
         }
 
@@ -381,7 +382,7 @@
             const toolList = toolsByFolder[folderName] || [];
 
             return selectedIndices.some(index => {
-                if (index === 0) return false; // index 0 is 'n/a'
+                if (index === 0) return false; // index 0 is 'none'
                 const toolName = toolList[index]?.name || "";
                 return toolNames.some(name => toolName.includes(name));
             });
