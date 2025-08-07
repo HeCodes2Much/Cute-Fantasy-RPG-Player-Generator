@@ -11,7 +11,7 @@
 --Created:
 --   Thu 07 August 2025, 01:46:29 PM [GMT+1]
 --Modified:
---   Thu 07 August 2025, 02:20:06 PM [GMT+1]
+--   Thu 07 August 2025, 02:53:06 PM [GMT+1]
 --
 --Description:
 --   Cute Fantasy RPG – Player Sprite Creator Tool
@@ -164,7 +164,12 @@
             selectedFeet = getRandomSelection(feet);
             selectedHands = getRandomSelection(hands);
             selectedHair = getRandomSelection(hair);
+            selectedAccessories = getRandomSelection(accessories);
             selectedMounts = getRandomSelection(mounts);
+
+            // Object.keys(toolsByFolder).forEach(folder => {
+            //     selectedToolsByFolder[folder] = getRandomToolSelections(toolsByFolder[folder]);
+            // });
 
             // Update all the <select> elements to reflect the new selections
             function updateSelect(id, selectedArr) {
@@ -182,11 +187,15 @@
             updateSelect("selectedFeet", selectedFeet);
             updateSelect("selectedHands", selectedHands);
             updateSelect("selectedHair", selectedHair);
+            updateSelect("selectedAccessories", selectedAccessories);
             updateSelect("selectedMounts", selectedMounts);
+
+            // Object.keys(toolsByFolder).forEach(folder => {
+            //     updateSelect(`selectedToolsByFolder_${folder}`, selectedToolsByFolder[folder]);
+            // });
 
             draw();
         }
-
 
         function initializeOptions() {
             const div = document.getElementById("selection");
