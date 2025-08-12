@@ -11,7 +11,7 @@
 --Created:
 --   Thu 07 August 2025, 01:46:29 PM [GMT+1]
 --Modified:
---   Tue 12 August 2025, 09:13:52 PM [GMT+1]
+--   Tue 12 August 2025, 09:30:25 PM [GMT+1]
 --
 --Description:
 --   Cute Fantasy RPG – Player Sprite Creator Tool
@@ -108,16 +108,35 @@
             document.getElementById("final-exported-canvas").style.display = "block";
             document.getElementById("randomize-selection").style.display = "inline-block";
 
-            const selectedFiles = Array.from(document.getElementById("selectFiles").files).map(file => ({
+            playerBase = [[]];
+            chest = [[]];
+            legs = [[]];
+            feet = [[]];
+            hands = [[]];
+            hair = [[]];
+            accessories = [[]];
+            mounts = [[]];
+            toolsByFolder = {};
+            selectedToolsFolder = {};
+
+            // 🔹 Get new files
+            const fileInput = document.getElementById("selectFiles");
+            const selectedFiles = Array.from(fileInput.files).map(file => ({
                 name: file.name,
                 path: file.webkitRelativePath,
                 file: file
             }));
 
+            // 🔹 Process new files
             selectedFiles.forEach(composeResource);
+
+            // 🔹 Sort and rebuild UI
             sort();
             initializeOptions();
             draw();
+
+            // 🔹 Clear file input so future uploads replace everything
+            fileInput.value = "";
         }
 
         function composeResource(fileObj) {
