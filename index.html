@@ -11,7 +11,7 @@
 --Created:
 --   Thu 07 August 2025, 01:46:29 PM [GMT+1]
 --Modified:
---   Tue 12 August 2025, 09:51:56 PM [GMT+1]
+--   Tue 12 August 2025, 11:08:18 PM [GMT+1]
 --
 --Description:
 --   Cute Fantasy RPG – Player Sprite Creator Tool
@@ -100,6 +100,7 @@
             createAnimationFromBodyCanvas();
             createAnimationFromToolsCanvas();
             createCombinedAnimationsPerAnimation();
+            setupAnimationClickListeners();
             createFullExportedCanvasFromActiveAnimations();
         };
 
@@ -373,6 +374,9 @@
         const runningAnimations = [23, 24, 25];
 
         function draw() {
+            if (window.selectedAnimations) {
+                window.selectedAnimations.clear();
+            }
             bodyCtx.clearRect(0, 0, bodyCanvas.width, bodyCanvas.height);
             const bodyImgFiles = [];
             toolsCtx.clearRect(0, 0, toolsCanvas.width, toolsCanvas.height);
@@ -470,6 +474,7 @@
             renderTools(toolsImgFiles, 0);
 
             createCombinedAnimationsPerAnimation();
+            setupAnimationClickListeners();
             createFullExportedCanvasFromActiveAnimations();
         }
 
@@ -477,6 +482,7 @@
             if (index >= imgs.length) {
                 createAnimationFromBodyCanvas();
                 createCombinedAnimationsPerAnimation();
+                setupAnimationClickListeners();
                 createFullExportedCanvasFromActiveAnimations();
                 return;
             }
@@ -493,6 +499,7 @@
             if (index >= imgs.length) {
                 createAnimationFromToolsCanvas();
                 createCombinedAnimationsPerAnimation();
+                setupAnimationClickListeners();
                 createFullExportedCanvasFromActiveAnimations();
                 return;
             }
@@ -806,19 +813,24 @@
                     return;
                 }
 
-                // Try to get animation indices from the canvases in #animationsCombined
-                let animCanvases = Array.from(container.querySelectorAll('canvas'));
-                let animIndices = [];
-                if (animCanvases.length) {
-                    animIndices = animCanvases
-                        .map(c => {
-                            const m = c.id.match(/combined-anim-(\d+)/);
-                            return m ? parseInt(m[1], 10) : NaN;
-                        })
-                        .filter(i => Number.isFinite(i));
-                }
+                // Get all combined-anim canvases' indices from DOM
+                const animCanvases = Array.from(container.querySelectorAll('canvas'));
+                let animIndices = animCanvases
+                    .map(c => {
+                        const m = c.id.match(/combined-anim-(\d+)/);
+                        return m ? parseInt(m[1], 10) : NaN;
+                    })
+                    .filter(i => Number.isFinite(i));
 
-                // Fallback: if there are no canvases in the container, build indices via your same filters
+                // Use selectedAnimations if any selected, otherwise fallback to all animIndices
+                const selectedAnimArray = Array.from(window.selectedAnimations || []);
+                if (selectedAnimArray.length > 0) {
+                    // Filter animIndices to only selected ones that exist in DOM
+                    animIndices = animIndices.filter(i => selectedAnimArray.includes(i));
+                }
+                // else animIndices stays as "all" (the ones from the DOM)
+
+                // Fallback: if no canvases or no animIndices, build full range as before
                 if (animIndices.length === 0) {
                     const skipMounts = selectedMounts.length === 1 && selectedMounts[0] === 0;
                     const hasMelee = hasSelectedTool("Combat", meleeToolNames);
@@ -914,7 +926,6 @@
             }
         }
 
-
         const downloadButton = document.getElementById('download-sprite');
 
         downloadButton.addEventListener('click', () => {
@@ -931,6 +942,26 @@
             link.click();
         });
 
+        window.selectedAnimations = new Set();
+
+        function setupAnimationClickListeners() {
+            document.querySelectorAll('[id^="combined-anim-"]').forEach(canvas => {
+                canvas.style.cursor = 'pointer';  // show pointer cursor on hover
+
+                canvas.addEventListener('click', () => {
+                    const animNum = parseInt(canvas.id.match(/combined-anim-(\d+)/)[1], 10);
+                    if (selectedAnimations.has(animNum)) {
+                        selectedAnimations.delete(animNum);
+                        canvas.classList.remove('selected');
+                    } else {
+                        selectedAnimations.add(animNum);
+                        canvas.classList.add('selected');
+                    }
+                    console.log('Selected animations:', Array.from(selectedAnimations));
+                    createFullExportedCanvasFromActiveAnimations();
+                });
+            });
+        }
     </script>
 
     <!-- Bootstrap JS (Optional) -->
@@ -1145,6 +1176,12 @@
         #animationsTools {
             display: none;
         }
+
+        .selected {
+            outline: 2px solid #4caf50;
+            cursor: pointer;
+        }
+
 
         /* ===== Utility classes ===== */
         .text-center {
