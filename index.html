@@ -11,7 +11,7 @@
 --Created:
 --   Thu 07 August 2025, 01:46:29 PM [GMT+1]
 --Modified:
---   Tue 12 August 2025, 09:30:25 PM [GMT+1]
+--   Tue 12 August 2025, 09:51:56 PM [GMT+1]
 --
 --Description:
 --   Cute Fantasy RPG – Player Sprite Creator Tool
@@ -27,6 +27,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cute Fantasy RPG – Player Sprite Creator Tool</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <!-- Bootstrap CSS -->
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
 </head>
@@ -563,7 +564,7 @@
 
                     if (document.getElementById('toggleNumbers')?.checked) {
                         frameCtx.fillStyle = 'white';
-                        frameCtx.font = '8px sans-serif';
+                        frameCtx.font = '12px VT323';
                         frameCtx.fillText(animIndex, 2, 10);
                     }
                     frameCanvas.id = animIndex
@@ -643,7 +644,7 @@
 
                     if (document.getElementById('toggleNumbers')?.checked) {
                         frameCtx.fillStyle = 'white';
-                        frameCtx.font = '8px sans-serif';
+                        frameCtx.font = '12px VT323';
                         frameCtx.fillText(animIndex, 2, 10);
                     }
                     frameCanvas.id = animIndex
@@ -765,7 +766,7 @@
 
                     if (document.getElementById('toggleNumbers')?.checked) {
                         combinedCtx.fillStyle = 'white';
-                        combinedCtx.font = '8px sans-serif';
+                        combinedCtx.font = '12px VT323';
                         combinedCtx.fillText(animIndex, 2, 10);
                     }
 
@@ -940,17 +941,20 @@
     <style>
         /* ===== Global Styles ===== */
         body {
-            font-family: 'Segoe UI', Tahoma, sans-serif;
+            font-family: 'VT323', Tahoma, sans-serif;
             background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
             color: #f4f4f4;
             margin: 0;
             padding: 20px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         h1,
         h2,
         h3 {
             font-weight: 600;
+            margin-top: 0;
         }
 
         /* ===== Header Buttons ===== */
@@ -968,31 +972,51 @@
             border-radius: 6px;
             font-size: 15px;
             cursor: pointer;
-            transition: 0.2s ease;
+            transition: background-color 0.2s ease, box-shadow 0.2s ease;
+            user-select: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
 
         .btn-primary {
             background-color: #1a73e8;
-            /* A vibrant, fresh blue */
             color: white;
+            box-shadow: 0 2px 6px rgb(26 115 232 / 0.5);
         }
 
-        .btn-primary:hover {
+        .btn-primary:hover,
+        .btn-primary:focus {
             background-color: #155ab6;
-            /* Darker shade for hover */
+            box-shadow: 0 4px 10px rgb(21 90 182 / 0.75);
+            outline: none;
         }
 
         .btn-secondary {
             background-color: #495057;
-            /* A deep slate gray */
             color: white;
+            box-shadow: 0 2px 6px rgb(73 80 87 / 0.5);
         }
 
-        .btn-secondary:hover {
+        .btn-secondary:hover,
+        .btn-secondary:focus {
             background-color: #343a40;
-            /* Even darker for hover */
+            box-shadow: 0 4px 10px rgb(52 58 64 / 0.75);
+            outline: none;
         }
 
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+            box-shadow: 0 2px 6px rgb(40 167 69 / 0.5);
+        }
+
+        .btn-success:hover,
+        .btn-success:focus {
+            background-color: #1e7e34;
+            box-shadow: 0 4px 10px rgb(30 126 52 / 0.75);
+            outline: none;
+        }
 
         /* ===== Selection Panel ===== */
         #selection {
@@ -1008,6 +1032,26 @@
             border-radius: 8px;
             box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.25);
             min-width: 180px;
+            max-height: 280px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #1a73e8 #1a1a1a;
+        }
+
+        /* Scrollbar for WebKit */
+        .select-group::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .select-group::-webkit-scrollbar-track {
+            background: #1a1a1a;
+            border-radius: 8px;
+        }
+
+        .select-group::-webkit-scrollbar-thumb {
+            background-color: #1a73e8;
+            border-radius: 8px;
+            border: 2px solid #1a1a1a;
         }
 
         .select-group label {
@@ -1015,6 +1059,7 @@
             font-weight: 500;
             margin-bottom: 8px;
             font-size: 14px;
+            color: #cbd5e1;
         }
 
         .select-group select {
@@ -1029,15 +1074,11 @@
             color: white;
             box-shadow: inset 0px 1px 3px rgba(0, 0, 0, 0.4);
             transition: background 0.2s;
-
             overflow-y: auto;
-            scrollbar-width: thin;
-            /* Firefox */
-            scrollbar-color: #1a73e8 #1a1a1a;
-            /* Firefox colors */
         }
 
-        .select-group select:hover {
+        .select-group select:hover,
+        .select-group select:focus {
             background-color: #2a2a2a;
         }
 
@@ -1051,23 +1092,24 @@
         .containers {
             display: inline-block;
             margin-bottom: 20px;
+            vertical-align: top;
         }
 
+        /* Final canvas and base canvas style */
         .final_canvas,
         .canvas-style-base {
             border-radius: 8px;
             background: #1a1a1a;
             border: 2px solid #444;
-            /* half the actual width */
             width: 333px;
-            /* keep aspect ratio */
+            /* fixed width */
             height: auto;
-            vertical-align: top;
-            /* Hidden until assets are loaded */
             display: inline-block;
+            vertical-align: top;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
         }
 
-        /* Animation previews */
+        /* Animation previews container styles */
         #animationsBody,
         #animationsTools,
         #animationsCombined {
@@ -1076,6 +1118,7 @@
             gap: 8px;
         }
 
+        /* Individual animation canvas styles */
         #animationsBody canvas,
         #animationsTools canvas,
         #animationsCombined canvas {
@@ -1085,18 +1128,61 @@
             width: 80px;
             height: auto;
             margin: 5px;
-            transition: transform 0.15s ease;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            cursor: pointer;
+            box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
         }
 
         #animationsBody canvas:hover,
         #animationsTools canvas:hover,
         #animationsCombined canvas:hover {
             transform: scale(1.05);
+            box-shadow: 0 0 8px #1a73e8;
         }
 
+        /* Hide animationsBody and animationsTools as requested */
         #animationsBody,
         #animationsTools {
             display: none;
+        }
+
+        /* ===== Utility classes ===== */
+        .text-center {
+            text-align: center;
+        }
+
+        /* ===== Responsive layout ===== */
+        @media (max-width: 900px) {
+            body {
+                padding: 15px 10px;
+            }
+
+            .header {
+                justify-content: center;
+                gap: 10px;
+            }
+
+            #selection {
+                justify-content: center;
+            }
+
+            .containers {
+                display: block;
+                width: 100%;
+                margin-bottom: 30px;
+            }
+
+            .final_canvas,
+            .canvas-style-base {
+                width: 100% !important;
+                max-width: 400px;
+                height: auto;
+                margin-bottom: 20px;
+            }
+
+            #animationsCombined {
+                justify-content: center;
+            }
         }
     </style>
 </body>
