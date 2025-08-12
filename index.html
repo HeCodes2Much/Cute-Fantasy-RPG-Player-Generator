@@ -11,7 +11,7 @@
 --Created:
 --   Thu 07 August 2025, 01:46:29 PM [GMT+1]
 --Modified:
---   Tue 12 August 2025, 05:43:10 PM [GMT+1]
+--   Tue 12 August 2025, 09:13:52 PM [GMT+1]
 --
 --Description:
 --   Cute Fantasy RPG – Player Sprite Creator Tool
@@ -50,7 +50,9 @@
     </div>
 
     <div class="containers" style="width: 75%;">
-        <div id="animations" style="display: block;"></div>
+        <div id="animationsBody"></div>
+        <div id="animationsTools"></div>
+        <div id="animationsCombined"></div>
     </div>
 
     <div class="containers" style="width: 20%;">
@@ -60,19 +62,24 @@
         </div>
 
         <!-- Final Canvas -->
-        <div id="final-exported-canvas">
+        <div id="final-exported-canvas" style="display:none;">
+            <canvas id="final_canvas" class="final_canvas" width="576" height="3584"></canvas>
         </div>
 
         <!-- Base Sections -->
         <div id="base-sections" style="display: none;">
-            <canvas id="canvas" class="canvas-style-base" width="576" height="3584"></canvas>
+            <canvas id="body_canvas" class="canvas-style-base" width="576" height="3584"></canvas>
+            <canvas id="tools_canvas" class="canvas-style-base" width="576" height="3584"></canvas>
         </div>
     </div>
 
 
     <script>
-        const canvas = document.getElementById("canvas");
-        const ctx = canvas.getContext("2d");
+        const bodyCanvas = document.getElementById("body_canvas");
+        const bodyCtx = bodyCanvas.getContext("2d");
+
+        const toolsCanvas = document.getElementById("tools_canvas");
+        const toolsCtx = toolsCanvas.getContext("2d");
 
         // Asset arrays
         var playerBase = [[]], chest = [[]], legs = [[]], feet = [[]], hands = [[]],
@@ -89,12 +96,16 @@
         };
 
         document.getElementById("toggleNumbers").onchange = function () {
-            createAnimationCanvasesFromMainCanvas();
+            createAnimationFromBodyCanvas();
+            createAnimationFromToolsCanvas();
+            createCombinedAnimationsPerAnimation();
+            createFullExportedCanvasFromActiveAnimations();
         };
 
         function initializeCharacterAssetsFolder() {
-            document.getElementById("animations-number").style.display = "block";
             document.getElementById("export-controls").style.display = "block";
+            document.getElementById("animations-number").style.display = "block";
+            document.getElementById("final-exported-canvas").style.display = "block";
             document.getElementById("randomize-selection").style.display = "inline-block";
 
             const selectedFiles = Array.from(document.getElementById("selectFiles").files).map(file => ({
@@ -342,8 +353,10 @@
         const runningAnimations = [23, 24, 25];
 
         function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const imgFiles = [];
+            bodyCtx.clearRect(0, 0, bodyCanvas.width, bodyCanvas.height);
+            const bodyImgFiles = [];
+            toolsCtx.clearRect(0, 0, toolsCanvas.width, toolsCanvas.height);
+            const toolsImgFiles = [];
 
             function collect(arr, selected, name) {
                 if (arr === mounts && selected[0] === 0) return;
@@ -352,7 +365,7 @@
                     const fileObj = arr[0][index];
                     if (index > 0 && fileObj && fileObj.file) {
                         let [x, y] = drawPositions[name] || [0, 0];
-                        imgFiles.push({ file: fileObj.file, x: x * frameSize, y: y * frameSize });
+                        bodyImgFiles.push({ file: fileObj.file, x: x * frameSize, y: y * frameSize });
                     }
                 });
             }
@@ -427,26 +440,48 @@
                         x = tx;
                         y = ty;
 
-                        imgFiles.push({ file: fileObj.file, x: x * frameSize, y: y * frameSize });
+                        toolsImgFiles.push({ file: fileObj.file, x: x * frameSize, y: y * frameSize });
                     }
                 });
             });
 
 
-            render(imgFiles, 0);
+            renderBody(bodyImgFiles, 0);
+            renderTools(toolsImgFiles, 0);
+
+            createCombinedAnimationsPerAnimation();
+            createFullExportedCanvasFromActiveAnimations();
         }
 
-        function render(imgs, index) {
+        function renderBody(imgs, index) {
             if (index >= imgs.length) {
-                createAnimationCanvasesFromMainCanvas();
+                createAnimationFromBodyCanvas();
+                createCombinedAnimationsPerAnimation();
+                createFullExportedCanvasFromActiveAnimations();
                 return;
             }
 
             const img = new Image();
             img.src = URL.createObjectURL(imgs[index].file);
             img.onload = () => {
-                ctx.drawImage(img, imgs[index].x, imgs[index].y);
-                render(imgs, index + 1);
+                bodyCtx.drawImage(img, imgs[index].x, imgs[index].y);
+                renderBody(imgs, index + 1);
+            };
+        }
+
+        function renderTools(imgs, index) {
+            if (index >= imgs.length) {
+                createAnimationFromToolsCanvas();
+                createCombinedAnimationsPerAnimation();
+                createFullExportedCanvasFromActiveAnimations();
+                return;
+            }
+
+            const img = new Image();
+            img.src = URL.createObjectURL(imgs[index].file);
+            img.onload = () => {
+                toolsCtx.drawImage(img, imgs[index].x, imgs[index].y);
+                renderTools(imgs, index + 1);
             };
         }
 
@@ -456,14 +491,14 @@
             const toolList = toolsByFolder[folderName] || [];
 
             return selectedIndices.some(index => {
-                if (index === 0) return false; // index 0 is 'none'
+                if (index === 0) return false; // index 0 is 'none'``
                 const toolName = toolList[index]?.name || "";
                 return toolNames.some(name => toolName.includes(name));
             });
         }
 
-        function createAnimationCanvasesFromMainCanvas() {
-            const container = document.getElementById('animations');
+        function createAnimationFromBodyCanvas() {
+            const container = document.getElementById('animationsBody');
             container.innerHTML = '';
 
             const framesByAnimation = [];
@@ -496,7 +531,7 @@
                     const frameCtx = frameCanvas.getContext('2d');
 
                     frameCtx.drawImage(
-                        canvas,
+                        body_canvas,
                         frameIndex * frameSize,
                         animIndex * frameSize,
                         frameSize,
@@ -540,11 +575,14 @@
                     currentFrame = (currentFrame + 1) % frames.length;
                 }, animationSpeed);
             });
-
-            createFullExportedCanvasFromActiveAnimations();
         }
 
-        function createFullExportedCanvasFromActiveAnimations() {
+        function createAnimationFromToolsCanvas() {
+            const container = document.getElementById('animationsTools');
+            container.innerHTML = '';
+
+            const framesByAnimation = [];
+
             const skipMounts = selectedMounts.length === 1 && selectedMounts[0] === 0;
             // Detect if melee or ranged tools are selected
             const hasMelee = hasSelectedTool("Combat", meleeToolNames);
@@ -553,10 +591,6 @@
             const hasUtility = hasSelectedTool("Utility", utilityToolNames)
             const hasIdle = hasSelectedTool("Other", idleToolNames)
             const hasRunning = hasSelectedTool("Other", runningToolNames)
-
-            let totalHeight = 0;
-
-            const animFrames = [];
 
             for (let animIndex = 0; animIndex < numAnimations; animIndex++) {
                 if (skipMounts && mountAnimations.includes(animIndex)) continue;
@@ -568,51 +602,303 @@
                 if (!hasRunning && runningAnimations.includes(animIndex)) continue;
 
                 const frameCount = framesPerAnimationArray[animIndex];
+                const frames = [];
 
-                animFrames.push({ animIndex, frameCount });
-                totalHeight += frameSize;
-            }
-
-            const finalCanvas = document.createElement('canvas');
-            finalCanvas.width = Math.max(...animFrames.map(a => a.frameCount)) * frameSize;
-            finalCanvas.height = totalHeight;
-
-            const finalCtx = finalCanvas.getContext('2d');
-
-            let currentY = 0;
-
-            for (const { animIndex, frameCount } of animFrames) {
                 for (let frameIndex = 0; frameIndex < frameCount; frameIndex++) {
-                    finalCtx.drawImage(
-                        canvas,
+                    const frameCanvas = document.createElement('canvas');
+                    frameCanvas.width = frameSize;
+                    frameCanvas.height = frameSize;
+                    const frameCtx = frameCanvas.getContext('2d');
+
+                    frameCtx.drawImage(
+                        tools_canvas,
                         frameIndex * frameSize,
                         animIndex * frameSize,
                         frameSize,
                         frameSize,
-                        frameIndex * frameSize,
-                        currentY,
+                        0,
+                        0,
                         frameSize,
                         frameSize
                     );
+
+                    if (document.getElementById('toggleNumbers')?.checked) {
+                        frameCtx.fillStyle = 'white';
+                        frameCtx.font = '8px sans-serif';
+                        frameCtx.fillText(animIndex, 2, 10);
+                    }
+                    frameCanvas.id = animIndex
+                    frames.push(frameCanvas);
                 }
-                currentY += frameSize;
+
+                framesByAnimation.push(frames);
             }
 
-            const exportContainer = document.getElementById('final-exported-canvas');
-            finalCanvas.id = 'final-canvas';
-            finalCanvas.className = 'final-canvas';
-            const oldCanvas = document.getElementById('final-canvas');
-            if (oldCanvas) {
-                exportContainer.replaceChild(finalCanvas, oldCanvas);
-            } else {
-                exportContainer.appendChild(finalCanvas);
+            framesByAnimation.forEach((frames) => {
+                const animCanvas = document.createElement('canvas');
+
+                // Assign animCanvas id from the first frameCanvas id
+                if (frames.length > 0) {
+                    animCanvas.id = `anim-${frames[0].id}`;
+                }
+
+                animCanvas.width = frameSize;
+                animCanvas.height = frameSize;
+
+                const animCtx = animCanvas.getContext('2d');
+                container.appendChild(animCanvas);
+
+                let currentFrame = 0;
+                setInterval(() => {
+                    animCtx.clearRect(0, 0, frameSize, frameSize);
+                    animCtx.drawImage(frames[currentFrame], 0, 0);
+                    currentFrame = (currentFrame + 1) % frames.length;
+                }, animationSpeed);
+            });
+        }
+
+        // Only the animation numbers here will have body drawn first.
+        // All others will have tools drawn first.
+        const bodyLastAnimations = [12, 13, 14, 22, 25, 31, 34, 37, 40, 43, 48, 49, 51, 55]; // whatever numbers should be last
+        const bodyFirstAnimations = Array.from({ length: 56 }, (_, i) => i)
+            .filter(i => !bodyLastAnimations.includes(i));
+
+        function createCombinedAnimationsPerAnimation() {
+            const container = document.getElementById('animationsCombined');
+            container.innerHTML = '';
+
+            const skipMounts = selectedMounts.length === 1 && selectedMounts[0] === 0;
+            const hasMelee = hasSelectedTool("Combat", meleeToolNames);
+            const hasRanged = hasSelectedTool("Combat", rangedToolNames);
+            const hasFishing = hasSelectedTool("Utility", fishingToolNames);
+            const hasUtility = hasSelectedTool("Utility", utilityToolNames);
+            const hasIdle = hasSelectedTool("Other", idleToolNames);
+            const hasRunning = hasSelectedTool("Other", runningToolNames);
+
+            for (let animIndex = 0; animIndex < numAnimations; animIndex++) {
+                if (skipMounts && mountAnimations.includes(animIndex)) continue;
+                if (!hasMelee && meleeAnimations.includes(animIndex)) continue;
+                if (!hasRanged && rangedAnimations.includes(animIndex)) continue;
+                if (!hasFishing && fishingAnimations.includes(animIndex)) continue;
+                if (!hasUtility && utilityAnimations.includes(animIndex)) continue;
+                if (!hasIdle && idleAnimations.includes(animIndex)) continue;
+                if (!hasRunning && runningAnimations.includes(animIndex)) continue;
+
+                const frameCount = framesPerAnimationArray[animIndex];
+                const combinedFrames = [];
+
+                // Default false, true if animIndex in array
+                const bodyFirst = bodyFirstAnimations.includes(animIndex);
+
+                for (let frameIndex = 0; frameIndex < frameCount; frameIndex++) {
+                    const combinedCanvas = document.createElement('canvas');
+                    combinedCanvas.width = frameSize;
+                    combinedCanvas.height = frameSize;
+                    const combinedCtx = combinedCanvas.getContext('2d');
+
+                    if (bodyFirst) {
+                        combinedCtx.drawImage(
+                            body_canvas,
+                            frameIndex * frameSize,
+                            animIndex * frameSize,
+                            frameSize,
+                            frameSize,
+                            0,
+                            0,
+                            frameSize,
+                            frameSize
+                        );
+                        combinedCtx.drawImage(
+                            tools_canvas,
+                            frameIndex * frameSize,
+                            animIndex * frameSize,
+                            frameSize,
+                            frameSize,
+                            0,
+                            0,
+                            frameSize,
+                            frameSize
+                        );
+                    } else {
+                        combinedCtx.drawImage(
+                            tools_canvas,
+                            frameIndex * frameSize,
+                            animIndex * frameSize,
+                            frameSize,
+                            frameSize,
+                            0,
+                            0,
+                            frameSize,
+                            frameSize
+                        );
+                        combinedCtx.drawImage(
+                            body_canvas,
+                            frameIndex * frameSize,
+                            animIndex * frameSize,
+                            frameSize,
+                            frameSize,
+                            0,
+                            0,
+                            frameSize,
+                            frameSize
+                        );
+                    }
+
+                    if (document.getElementById('toggleNumbers')?.checked) {
+                        combinedCtx.fillStyle = 'white';
+                        combinedCtx.font = '8px sans-serif';
+                        combinedCtx.fillText(animIndex, 2, 10);
+                    }
+
+                    combinedFrames.push(combinedCanvas);
+                }
+
+                const animCanvas = document.createElement('canvas');
+                animCanvas.id = `combined-anim-${animIndex}`;
+                animCanvas.width = frameSize;
+                animCanvas.height = frameSize;
+                container.appendChild(animCanvas);
+
+                const animCtx = animCanvas.getContext('2d');
+
+                let currentFrame = 0;
+                setInterval(() => {
+                    animCtx.clearRect(0, 0, frameSize, frameSize);
+                    animCtx.drawImage(combinedFrames[currentFrame], 0, 0);
+                    currentFrame = (currentFrame + 1) % combinedFrames.length;
+                }, animationSpeed);
             }
         }
+
+
+        function createFullExportedCanvasFromActiveAnimations() {
+            try {
+                const container = document.getElementById('animationsCombined');
+                if (!container) {
+                    console.warn("No #animationsCombined container found.");
+                    return;
+                }
+
+                const bodyCanvas = window.body_canvas;
+                const toolsCanvas = window.tools_canvas;
+                if (!bodyCanvas || !toolsCanvas) {
+                    console.error("body_canvas or tools_canvas not found.");
+                    return;
+                }
+
+                // Try to get animation indices from the canvases in #animationsCombined
+                let animCanvases = Array.from(container.querySelectorAll('canvas'));
+                let animIndices = [];
+                if (animCanvases.length) {
+                    animIndices = animCanvases
+                        .map(c => {
+                            const m = c.id.match(/combined-anim-(\d+)/);
+                            return m ? parseInt(m[1], 10) : NaN;
+                        })
+                        .filter(i => Number.isFinite(i));
+                }
+
+                // Fallback: if there are no canvases in the container, build indices via your same filters
+                if (animIndices.length === 0) {
+                    const skipMounts = selectedMounts.length === 1 && selectedMounts[0] === 0;
+                    const hasMelee = hasSelectedTool("Combat", meleeToolNames);
+                    const hasRanged = hasSelectedTool("Combat", rangedToolNames);
+                    const hasFishing = hasSelectedTool("Utility", fishingToolNames);
+                    const hasUtility = hasSelectedTool("Utility", utilityToolNames);
+                    const hasIdle = hasSelectedTool("Other", idleToolNames);
+                    const hasRunning = hasSelectedTool("Other", runningToolNames);
+
+                    for (let animIndex = 0; animIndex < numAnimations; animIndex++) {
+                        if (skipMounts && mountAnimations.includes(animIndex)) continue;
+                        if (!hasMelee && meleeAnimations.includes(animIndex)) continue;
+                        if (!hasRanged && rangedAnimations.includes(animIndex)) continue;
+                        if (!hasFishing && fishingAnimations.includes(animIndex)) continue;
+                        if (!hasUtility && utilityAnimations.includes(animIndex)) continue;
+                        if (!hasIdle && idleAnimations.includes(animIndex)) continue;
+                        if (!hasRunning && runningAnimations.includes(animIndex)) continue;
+                        animIndices.push(animIndex);
+                    }
+                }
+
+                if (animIndices.length === 0) {
+                    console.warn("No animations detected to export.");
+                    return;
+                }
+
+                // Build animFrames and find max frames
+                const animFrames = [];
+                let maxFrames = 0;
+                for (const animIndex of animIndices) {
+                    const frameCount = framesPerAnimationArray[animIndex];
+                    if (!frameCount || frameCount <= 0) {
+                        console.warn(`Skipping anim ${animIndex} (no frames).`);
+                        continue;
+                    }
+                    animFrames.push({ animIndex, frameCount });
+                    if (frameCount > maxFrames) maxFrames = frameCount;
+                }
+
+                if (animFrames.length === 0) {
+                    console.warn("No valid animation frames found to export.");
+                    return;
+                }
+
+                // Create final canvas
+                const finalCanvas = document.createElement('canvas');
+                finalCanvas.id = 'final_canvas';
+                finalCanvas.className = 'final_canvas';
+                finalCanvas.width = maxFrames * frameSize;
+                finalCanvas.height = animFrames.length * frameSize;
+
+                const finalCtx = finalCanvas.getContext('2d');
+                // For pixel art you probably want no smoothing
+                if (finalCtx) finalCtx.imageSmoothingEnabled = false;
+
+                // Draw frames directly into final canvas using the same combine order as createCombinedAnimationsPerAnimation
+                const bodyFirstArray = Array.isArray(window.bodyFirstAnimations) ? window.bodyFirstAnimations : [];
+
+                for (let row = 0; row < animFrames.length; row++) {
+                    const { animIndex, frameCount } = animFrames[row];
+                    const bodyFirst = bodyFirstArray.includes(animIndex);
+                    const dy = row * frameSize;
+
+                    for (let frameIndex = 0; frameIndex < frameCount; frameIndex++) {
+                        const sx = frameIndex * frameSize;
+                        const sy = animIndex * frameSize;
+                        const dx = frameIndex * frameSize;
+
+                        if (bodyFirst) {
+                            finalCtx.drawImage(bodyCanvas, sx, sy, frameSize, frameSize, dx, dy, frameSize, frameSize);
+                            finalCtx.drawImage(toolsCanvas, sx, sy, frameSize, frameSize, dx, dy, frameSize, frameSize);
+                        } else {
+                            finalCtx.drawImage(toolsCanvas, sx, sy, frameSize, frameSize, dx, dy, frameSize, frameSize);
+                            finalCtx.drawImage(bodyCanvas, sx, sy, frameSize, frameSize, dx, dy, frameSize, frameSize);
+                        }
+                    }
+                }
+
+                // Insert/replace in export container safely
+                const exportContainer = document.getElementById('final-exported-canvas');
+                if (!exportContainer) {
+                    console.error("#final-exported-canvas not found.");
+                    return;
+                }
+                const oldCanvas = exportContainer.querySelector('#final_canvas');
+                if (oldCanvas) exportContainer.replaceChild(finalCanvas, oldCanvas);
+                else exportContainer.appendChild(finalCanvas);
+
+                console.log("Export complete — final_canvas appended to #final-exported-canvas");
+                return finalCanvas;
+            } catch (err) {
+                console.error("Error while creating export:", err);
+            }
+        }
+
 
         const downloadButton = document.getElementById('download-sprite');
 
         downloadButton.addEventListener('click', () => {
-            const finalCanvas = document.getElementById('final-canvas');
+            const finalCanvas = document.getElementById('final_canvas');
             if (!finalCanvas) {
                 alert('Canvas not ready yet!');
                 return;
@@ -748,14 +1034,11 @@
             margin-bottom: 20px;
         }
 
-        .final-canvas,
+        .final_canvas,
         .canvas-style-base {
             border-radius: 8px;
             background: #1a1a1a;
             border: 2px solid #444;
-        }
-
-        .final-canvas {
             /* half the actual width */
             width: 333px;
             /* keep aspect ratio */
@@ -766,13 +1049,17 @@
         }
 
         /* Animation previews */
-        #animations {
+        #animationsBody,
+        #animationsTools,
+        #animationsCombined {
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
         }
 
-        #animations canvas {
+        #animationsBody canvas,
+        #animationsTools canvas,
+        #animationsCombined canvas {
             border-radius: 6px;
             border: 1px solid #444;
             background: #1a1a1a;
@@ -782,8 +1069,15 @@
             transition: transform 0.15s ease;
         }
 
-        #animations canvas:hover {
+        #animationsBody canvas:hover,
+        #animationsTools canvas:hover,
+        #animationsCombined canvas:hover {
             transform: scale(1.05);
+        }
+
+        #animationsBody,
+        #animationsTools {
+            display: none;
         }
     </style>
 </body>
