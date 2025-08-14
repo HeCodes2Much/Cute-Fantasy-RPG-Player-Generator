@@ -11,7 +11,7 @@
 --Created:
 --   Thu 07 August 2025, 01:46:29 PM [GMT+1]
 --Modified:
---   Thu 14 August 2025, 07:54:57 PM [GMT+1]
+--   Thu 14 August 2025, 08:19:28 PM [GMT+1]
 --
 --Description:
 --   Cute Fantasy RPG – Player Sprite Creator Tool
@@ -90,11 +90,9 @@
         // Asset arrays
         var playerBase = [[]], chest = [[]], legs = [[]], feet = [[]], hands = [[]],
             hair = [[]], accessories = [[]], mounts = [[]];
+        var walkIdleRows = [], rollJumpRows = [], horseRidingRows = [];
         var toolsByFolder = {};
         var selectedToolsFolder = {};
-        var walkIdleRows = [];
-        var rollJumpRows = [];
-        var horseRidingRows = [];
 
         // Selections
         var selectedPlayerBase = [1], selectedChest = [0], selectedLegs = [0], selectedFeet = [0],
