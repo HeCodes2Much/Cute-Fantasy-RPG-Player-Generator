@@ -11,7 +11,7 @@
 --Created:
 --   Thu 07 August 2025, 01:46:29 PM [GMT+1]
 --Modified:
---   Wed 13 August 2025, 10:01:47 AM [GMT+1]
+--   Thu 14 August 2025, 07:54:57 PM [GMT+1]
 --
 --Description:
 --   Cute Fantasy RPG – Player Sprite Creator Tool
@@ -52,6 +52,13 @@
         <div id="animationsBody"></div>
         <div id="animationsTools"></div>
         <div id="animationsCombined"></div>
+        <details id="animationsWithBackground" style="display: none;">
+            <summary>Demo View</summary>
+            <br>
+            <canvas id="walk_idle_canvas" class="walk_idle_canvas" width="208" height="208"></canvas>
+            <canvas id="roll_jump_canvas" class="roll_jump_canvas" width="208" height="208"></canvas>
+            <canvas id="horse_ride_canvas" class="horse_ride_canvas" width="208" height="208"></canvas>
+        </details>
     </div>
 
     <div class="containers" style="width: 20%;">
@@ -85,6 +92,9 @@
             hair = [[]], accessories = [[]], mounts = [[]];
         var toolsByFolder = {};
         var selectedToolsFolder = {};
+        var walkIdleRows = [];
+        var rollJumpRows = [];
+        var horseRidingRows = [];
 
         // Selections
         var selectedPlayerBase = [1], selectedChest = [0], selectedLegs = [0], selectedFeet = [0],
@@ -100,6 +110,7 @@
             createCombinedAnimationsPerAnimation();
             setupAnimationClickListeners();
             createFullExportedCanvasFromActiveAnimations();
+            setupCustomDisplay();
         };
 
         function initializeCharacterAssetsFolder() {
@@ -474,6 +485,7 @@
             createCombinedAnimationsPerAnimation();
             setupAnimationClickListeners();
             createFullExportedCanvasFromActiveAnimations();
+            setupCustomDisplay();
         }
 
         function renderBody(imgs, index) {
@@ -482,6 +494,7 @@
                 createCombinedAnimationsPerAnimation();
                 setupAnimationClickListeners();
                 createFullExportedCanvasFromActiveAnimations();
+                setupCustomDisplay();
                 return;
             }
 
@@ -499,6 +512,7 @@
                 createCombinedAnimationsPerAnimation();
                 setupAnimationClickListeners();
                 createFullExportedCanvasFromActiveAnimations();
+                setupCustomDisplay();
                 return;
             }
 
@@ -701,7 +715,12 @@
             const hasRunning = hasSelectedTool("Other", runningToolNames);
 
             for (let animIndex = 0; animIndex < numAnimations; animIndex++) {
-                if (skipMounts && mountAnimations.includes(animIndex)) continue;
+                if (skipMounts && mountAnimations.includes(animIndex)) {
+                    document.getElementById("horse_ride_canvas").style.display = "none";
+                    continue
+                } else {
+                    document.getElementById("horse_ride_canvas").style.display = "inline-block";
+                };
                 if (!hasMelee && meleeAnimations.includes(animIndex)) continue;
                 if (!hasRanged && rangedAnimations.includes(animIndex)) continue;
                 if (!hasFishing && fishingAnimations.includes(animIndex)) continue;
@@ -793,8 +812,453 @@
                     currentFrame = (currentFrame + 1) % combinedFrames.length;
                 }, animationSpeed);
             }
+            setupCustomDisplay();
         }
 
+        function setupCustomDisplay() {
+            document.getElementById("animationsWithBackground").style.display = "block";
+            setupDemoViewWalkIdle();
+            setupDemoViewHorseRide();
+            setupDemoViewRollJump();
+        }
+
+        function setupDemoViewWalkIdle() {
+
+            const walkIdleCanvas = document.getElementById("walk_idle_canvas");
+            const walkIdleCtx = walkIdleCanvas.getContext("2d");
+
+            const spriteSheet = document.getElementById("final_canvas");
+
+            // Define animations: each uses a different row and may have a different number of frames
+            const animations = [
+                {
+                    name: "idle_down",
+                    row: walkIdleRows[0],
+                    x: 75,
+                    y: 100,
+                    currentFrame: 0,
+                    totalFrames: 4,
+                    speed: 250,
+                    swapDirection: false
+                },
+                {
+                    name: "idle_up",
+                    row: walkIdleRows[2],
+                    x: 75,
+                    y: 50,
+                    currentFrame: 0,
+                    totalFrames: 4,
+                    speed: 250,
+                    swapDirection: false
+                },
+                {
+                    name: "idle_left",
+                    row: walkIdleRows[1],
+                    x: 50,
+                    y: 75,
+                    currentFrame: 0,
+                    totalFrames: 4,
+                    speed: 250,
+                    swapDirection: true // Flip horizontally
+                },
+                {
+                    name: "idle_right",
+                    row: walkIdleRows[1],
+                    x: 100,
+                    y: 75,
+                    currentFrame: 0,
+                    totalFrames: 4,
+                    speed: 250,
+                    swapDirection: false
+                },
+                {
+                    name: "walk_down",
+                    row: walkIdleRows[3],
+                    x: 75,
+                    y: 140,
+                    currentFrame: 0,
+                    totalFrames: 4,
+                    speed: 250,
+                    swapDirection: false
+                },
+                {
+                    name: "walk_up",
+                    row: walkIdleRows[5],
+                    x: 75,
+                    y: 10,
+                    currentFrame: 0,
+                    totalFrames: 4,
+                    speed: 250,
+                    swapDirection: false
+                },
+                {
+                    name: "walk_left",
+                    row: walkIdleRows[4],
+                    x: 10,
+                    y: 75,
+                    currentFrame: 0,
+                    totalFrames: 4,
+                    speed: 250,
+                    swapDirection: true // Flip horizontally
+                },
+                {
+                    name: "walk_right",
+                    row: walkIdleRows[4],
+                    x: 140,
+                    y: 75,
+                    currentFrame: 0,
+                    totalFrames: 4,
+                    speed: 250,
+                    swapDirection: false
+                }
+            ];
+
+            const backgroundImage = new Image();
+            backgroundImage.src = "https://raw.githubusercontent.com/HeCodes2Much/Cute-Fantasy-RPG-Player-Generator/refs/heads/main/background.png";
+
+            backgroundImage.onload = () => {
+                const lastUpdate = new Array(animations.length).fill(Date.now());
+
+                function animate() {
+                    const now = Date.now();
+
+                    // Clear canvas and draw background
+                    walkIdleCtx.clearRect(0, 0, walkIdleCanvas.width, walkIdleCanvas.height);
+                    walkIdleCtx.drawImage(backgroundImage, 0, 0, walkIdleCanvas.width, walkIdleCanvas.height);
+
+                    // Draw all animations
+                    animations.forEach((anim, index) => {
+                        // Advance frame based on speed
+                        if (now - lastUpdate[index] >= anim.speed) {
+                            anim.currentFrame = (anim.currentFrame + 1) % anim.totalFrames;
+                            lastUpdate[index] = now;
+                        }
+
+                        if (anim.swapDirection) {
+                            // Flip horizontally
+                            walkIdleCtx.save();
+                            walkIdleCtx.translate(anim.x + frameSize, anim.y); // move to position + width
+                            walkIdleCtx.scale(-1, 1); // flip horizontally
+
+                            walkIdleCtx.drawImage(
+                                spriteSheet,
+                                anim.currentFrame * frameSize, anim.row * frameSize, // source x, y
+                                frameSize, frameSize,                                // source width, height
+                                0, 0,                                                // draw at 0,0 because we translated
+                                frameSize, frameSize                                 // destination size
+                            );
+
+                            walkIdleCtx.restore();
+                        } else {
+                            // Normal draw
+                            walkIdleCtx.drawImage(
+                                spriteSheet,
+                                anim.currentFrame * frameSize, anim.row * frameSize,
+                                frameSize, frameSize,
+                                anim.x, anim.y,
+                                frameSize, frameSize
+                            );
+                        }
+                    });
+
+                    requestAnimationFrame(animate);
+                }
+
+                animate();
+            };
+        }
+
+        function setupDemoViewHorseRide() {
+
+            const horseRideCanvas = document.getElementById("horse_ride_canvas");
+            const horseRideCtx = horseRideCanvas.getContext("2d");
+
+            const spriteSheet = document.getElementById("final_canvas");
+
+            // Define animations: each uses a different row and may have a different number of frames
+            const animations = [
+                {
+                    name: "horseRide_down",
+                    row: horseRidingRows[0],
+                    x: 75,
+                    y: 100,
+                    currentFrame: 0,
+                    totalFrames: 2,
+                    speed: 250,
+                    swapDirection: false
+                },
+                {
+                    name: "horseRide_up",
+                    row: horseRidingRows[1],
+                    x: 75,
+                    y: 50,
+                    currentFrame: 0,
+                    totalFrames: 2,
+                    speed: 250,
+                    swapDirection: false
+                },
+                {
+                    name: "horseRide_left",
+                    row: horseRidingRows[2],
+                    x: 50,
+                    y: 75,
+                    currentFrame: 0,
+                    totalFrames: 2,
+                    speed: 250,
+                    swapDirection: true // Flip horizontally
+                },
+                {
+                    name: "horseRide_right",
+                    row: horseRidingRows[2],
+                    x: 100,
+                    y: 75,
+                    currentFrame: 0,
+                    totalFrames: 2,
+                    speed: 250,
+                    swapDirection: false
+                },
+                {
+                    name: "horseRun_down",
+                    row: horseRidingRows[4],
+                    x: 75,
+                    y: 140,
+                    currentFrame: 0,
+                    totalFrames: 6,
+                    speed: 250,
+                    swapDirection: false
+                },
+                {
+                    name: "horseRun_up",
+                    row: horseRidingRows[5],
+                    x: 75,
+                    y: 10,
+                    currentFrame: 0,
+                    totalFrames: 6,
+                    speed: 250,
+                    swapDirection: false
+                },
+                {
+                    name: "horseRun_left",
+                    row: horseRidingRows[3],
+                    x: 10,
+                    y: 75,
+                    currentFrame: 0,
+                    totalFrames: 6,
+                    speed: 250,
+                    swapDirection: true // Flip horizontally
+                },
+                {
+                    name: "horseRun_right",
+                    row: horseRidingRows[3],
+                    x: 140,
+                    y: 75,
+                    currentFrame: 0,
+                    totalFrames: 6,
+                    speed: 250,
+                    swapDirection: false
+                }
+            ];
+
+            const backgroundImage = new Image();
+            backgroundImage.src = "https://raw.githubusercontent.com/HeCodes2Much/Cute-Fantasy-RPG-Player-Generator/refs/heads/main/background.png";
+
+            backgroundImage.onload = () => {
+                const lastUpdate = new Array(animations.length).fill(Date.now());
+
+                function animate() {
+                    const now = Date.now();
+
+                    // Clear canvas and draw background
+                    horseRideCtx.clearRect(0, 0, horseRideCanvas.width, horseRideCanvas.height);
+                    horseRideCtx.drawImage(backgroundImage, 0, 0, horseRideCanvas.width, horseRideCanvas.height);
+
+                    // Draw all animations
+                    animations.forEach((anim, index) => {
+                        // Advance frame based on speed
+                        if (now - lastUpdate[index] >= anim.speed) {
+                            anim.currentFrame = (anim.currentFrame + 1) % anim.totalFrames;
+                            lastUpdate[index] = now;
+                        }
+
+                        if (anim.swapDirection) {
+                            // Flip horizontally
+                            horseRideCtx.save();
+                            horseRideCtx.translate(anim.x + frameSize, anim.y); // move to position + width
+                            horseRideCtx.scale(-1, 1); // flip horizontally
+
+                            horseRideCtx.drawImage(
+                                spriteSheet,
+                                anim.currentFrame * frameSize, anim.row * frameSize, // source x, y
+                                frameSize, frameSize,                                // source width, height
+                                0, 0,                                                // draw at 0,0 because we translated
+                                frameSize, frameSize                                 // destination size
+                            );
+
+                            horseRideCtx.restore();
+                        } else {
+                            // Normal draw
+                            horseRideCtx.drawImage(
+                                spriteSheet,
+                                anim.currentFrame * frameSize, anim.row * frameSize,
+                                frameSize, frameSize,
+                                anim.x, anim.y,
+                                frameSize, frameSize
+                            );
+                        }
+                    });
+
+                    requestAnimationFrame(animate);
+                }
+
+                animate();
+            };
+        }
+
+        function setupDemoViewRollJump() {
+
+            const rollJumpCanvas = document.getElementById("roll_jump_canvas");
+            const rollJumpCtx = rollJumpCanvas.getContext("2d");
+
+            const spriteSheet = document.getElementById("final_canvas");
+
+            // Define animations: each uses a different row and may have a different number of frames
+            const animations = [
+                {
+                    name: "roll_down",
+                    row: rollJumpRows[0],
+                    x: 75,
+                    y: 100,
+                    currentFrame: 0,
+                    totalFrames: 8,
+                    speed: 250,
+                    swapDirection: false
+                },
+                {
+                    name: "roll_up",
+                    row: rollJumpRows[1],
+                    x: 75,
+                    y: 50,
+                    currentFrame: 0,
+                    totalFrames: 8,
+                    speed: 250,
+                    swapDirection: false
+                },
+                {
+                    name: "roll_left",
+                    row: rollJumpRows[2],
+                    x: 50,
+                    y: 75,
+                    currentFrame: 0,
+                    totalFrames: 8,
+                    speed: 250,
+                    swapDirection: true // Flip horizontally
+                },
+                {
+                    name: "roll_right",
+                    row: rollJumpRows[2],
+                    x: 100,
+                    y: 75,
+                    currentFrame: 0,
+                    totalFrames: 8,
+                    speed: 250,
+                    swapDirection: false
+                },
+                {
+                    name: "jump_down",
+                    row: rollJumpRows[3],
+                    x: 75,
+                    y: 140,
+                    currentFrame: 0,
+                    totalFrames: 4,
+                    speed: 250,
+                    swapDirection: false
+                },
+                {
+                    name: "jump_up",
+                    row: rollJumpRows[5],
+                    x: 75,
+                    y: 10,
+                    currentFrame: 0,
+                    totalFrames: 4,
+                    speed: 250,
+                    swapDirection: false
+                },
+                {
+                    name: "jump_left",
+                    row: rollJumpRows[4],
+                    x: 10,
+                    y: 75,
+                    currentFrame: 0,
+                    totalFrames: 4,
+                    speed: 250,
+                    swapDirection: true // Flip horizontally
+                },
+                {
+                    name: "jump_right",
+                    row: rollJumpRows[4],
+                    x: 140,
+                    y: 75,
+                    currentFrame: 0,
+                    totalFrames: 4,
+                    speed: 250,
+                    swapDirection: false
+                }
+            ];
+
+            const backgroundImage = new Image();
+            backgroundImage.src = "https://raw.githubusercontent.com/HeCodes2Much/Cute-Fantasy-RPG-Player-Generator/refs/heads/main/background.png";
+
+            backgroundImage.onload = () => {
+                const lastUpdate = new Array(animations.length).fill(Date.now());
+
+                function animate() {
+                    const now = Date.now();
+
+                    // Clear canvas and draw background
+                    rollJumpCtx.clearRect(0, 0, rollJumpCanvas.width, rollJumpCanvas.height);
+                    rollJumpCtx.drawImage(backgroundImage, 0, 0, rollJumpCanvas.width, rollJumpCanvas.height);
+
+                    // Draw all animations
+                    animations.forEach((anim, index) => {
+                        // Advance frame based on speed
+                        if (now - lastUpdate[index] >= anim.speed) {
+                            anim.currentFrame = (anim.currentFrame + 1) % anim.totalFrames;
+                            lastUpdate[index] = now;
+                        }
+
+                        if (anim.swapDirection) {
+                            // Flip horizontally
+                            rollJumpCtx.save();
+                            rollJumpCtx.translate(anim.x + frameSize, anim.y); // move to position + width
+                            rollJumpCtx.scale(-1, 1); // flip horizontally
+
+                            rollJumpCtx.drawImage(
+                                spriteSheet,
+                                anim.currentFrame * frameSize, anim.row * frameSize, // source x, y
+                                frameSize, frameSize,                                // source width, height
+                                0, 0,                                                // draw at 0,0 because we translated
+                                frameSize, frameSize                                 // destination size
+                            );
+
+                            rollJumpCtx.restore();
+                        } else {
+                            // Normal draw
+                            rollJumpCtx.drawImage(
+                                spriteSheet,
+                                anim.currentFrame * frameSize, anim.row * frameSize,
+                                frameSize, frameSize,
+                                anim.x, anim.y,
+                                frameSize, frameSize
+                            );
+                        }
+                    });
+
+                    requestAnimationFrame(animate);
+                }
+
+                animate();
+            };
+        }
 
         function createFullExportedCanvasFromActiveAnimations() {
             try {
@@ -887,6 +1351,10 @@
                 // Draw frames directly into final canvas using the same combine order as createCombinedAnimationsPerAnimation
                 const bodyFirstArray = Array.isArray(window.bodyFirstAnimations) ? window.bodyFirstAnimations : [];
 
+                walkIdleRows.splice(0, walkIdleRows.length);
+                rollJumpRows.splice(0, rollJumpRows.length);
+                horseRidingRows.splice(0, horseRidingRows.length);
+
                 for (let row = 0; row < animFrames.length; row++) {
                     const { animIndex, frameCount } = animFrames[row];
                     const bodyFirst = bodyFirstArray.includes(animIndex);
@@ -897,6 +1365,7 @@
                         const sy = animIndex * frameSize;
                         const dx = frameIndex * frameSize;
 
+
                         if (bodyFirst) {
                             finalCtx.drawImage(bodyCanvas, sx, sy, frameSize, frameSize, dx, dy, frameSize, frameSize);
                             finalCtx.drawImage(toolsCanvas, sx, sy, frameSize, frameSize, dx, dy, frameSize, frameSize);
@@ -905,6 +1374,20 @@
                             finalCtx.drawImage(bodyCanvas, sx, sy, frameSize, frameSize, dx, dy, frameSize, frameSize);
                         }
                     }
+
+                    function inRange(value, min, max) {
+                        return value >= min && value <= max;
+                    }
+
+                    if (inRange(animIndex, 0, 5)) {
+                        walkIdleRows.push(row);
+                    } else if (inRange(animIndex, 17, 19) || inRange(animIndex, 26, 28)) {
+                        rollJumpRows.push(row);
+                    } else if (inRange(animIndex, 50, 55)) {
+                        console.log(`Horse riding animation detected at index ${animIndex}, row ${row}`);
+                        horseRidingRows.push(row);
+                    }
+
                 }
 
                 // Insert/replace in export container safely
@@ -1115,6 +1598,11 @@
             color: white;
         }
 
+        .select-group:hover {
+            transform: scale(1.02);
+            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
         /* ===== Canvas Containers ===== */
         .containers {
             display: inline-block;
@@ -1124,6 +1612,9 @@
 
         /* Final canvas and base canvas style */
         .final_canvas,
+        .walk_idle_canvas,
+        .horse_ride_canvas,
+        .roll_jump_canvas,
         .canvas-style-base {
             border-radius: 8px;
             background: #1a1a1a;
@@ -1139,7 +1630,8 @@
         /* Animation previews container styles */
         #animationsBody,
         #animationsTools,
-        #animationsCombined {
+        #animationsCombined,
+        #animationsWithBackground {
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
@@ -1160,9 +1652,27 @@
             box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
         }
 
+        #animationsWithBackground {
+            margin-top: 20px;
+        }
+
+        #animationsWithBackground canvas {
+            border-radius: 6px;
+            border: 1px solid #444;
+            background: #1a1a1a;
+            width: 208px;
+            height: auto;
+            margin: 5px;
+            padding: 5px;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            cursor: pointer;
+            box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+        }
+
         #animationsBody canvas:hover,
         #animationsTools canvas:hover,
-        #animationsCombined canvas:hover {
+        #animationsCombined canvas:hover,
+        #animationsWithBackground canvas:hover {
             transform: scale(1.05);
             box-shadow: 0 0 8px #1a73e8;
         }
@@ -1213,7 +1723,8 @@
                 margin-bottom: 20px;
             }
 
-            #animationsCombined {
+            #animationsCombined,
+            #animationsWithBackground {
                 justify-content: center;
             }
         }
