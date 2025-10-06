@@ -1,0 +1,289 @@
+/*-*-coding:utf-8 -*-
+ *Auto updated?
+ *   Yes
+ *File:
+ *   styles.css
+ *Author:
+ *   CreativeCodeCat [wayne6324@gmail.com]
+ *Github:
+ *   https://github.com/CreativeCodeCat/
+ *
+ *Created:
+ *   Thu 07 August 2025, 01:46:29 PM [GMT+1]
+ *Modified:
+ *   Mon 06 October 2025, 02:02:30 PM [GMT+1]
+ *
+ *Description:
+ *   Cute Fantasy RPG – Player Sprite Creator Tool
+ *
+ *Dependencies:
+ *   HTML, CSS, JavaScript
+**/
+
+/* ===== Global Styles ===== */
+body {
+    font-family: 'VT323', Tahoma, sans-serif;
+    background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+    color: #f4f4f4;
+    margin: 0;
+    padding: 20px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3 {
+    font-weight: 600;
+    margin-top: 0;
+}
+
+/* ===== Header Buttons ===== */
+.header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.btn {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+    user-select: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-primary {
+    background-color: #1a73e8;
+    color: white;
+    box-shadow: 0 2px 6px rgb(26 115 232 / 0.5);
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+    background-color: #155ab6;
+    box-shadow: 0 4px 10px rgb(21 90 182 / 0.75);
+    outline: none;
+}
+
+.btn-secondary {
+    background-color: #495057;
+    color: white;
+    box-shadow: 0 2px 6px rgb(73 80 87 / 0.5);
+}
+
+.btn-secondary:hover,
+.btn-secondary:focus {
+    background-color: #343a40;
+    box-shadow: 0 4px 10px rgb(52 58 64 / 0.75);
+    outline: none;
+}
+
+.btn-success {
+    background-color: #28a745;
+    color: white;
+    box-shadow: 0 2px 6px rgb(40 167 69 / 0.5);
+}
+
+.btn-success:hover,
+.btn-success:focus {
+    background-color: #1e7e34;
+    box-shadow: 0 4px 10px rgb(30 126 52 / 0.75);
+    outline: none;
+}
+
+/* ===== Selection Panel ===== */
+#selection {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 25px;
+}
+
+.select-group {
+    background: #242424;
+    padding: 12px;
+    border-radius: 8px;
+    box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.25);
+    min-width: 180px;
+    max-height: 280px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #1a73e8 #1a1a1a;
+}
+
+/* Scrollbar for WebKit */
+.select-group::-webkit-scrollbar {
+    width: 8px;
+}
+
+.select-group::-webkit-scrollbar-track {
+    background: #1a1a1a;
+    border-radius: 8px;
+}
+
+.select-group::-webkit-scrollbar-thumb {
+    background-color: #1a73e8;
+    border-radius: 8px;
+    border: 2px solid #1a1a1a;
+}
+
+.select-group label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #cbd5e1;
+}
+
+.select-group select {
+    width: 100%;
+    min-height: 150px;
+    padding: 6px 8px;
+    font-size: 14px;
+    border-radius: 6px;
+    border: none;
+    outline: none;
+    background-color: #1a1a1a;
+    color: white;
+    box-shadow: inset 0px 1px 3px rgba(0, 0, 0, 0.4);
+    transition: background 0.2s;
+    overflow-y: auto;
+}
+
+.select-group select:hover,
+.select-group select:focus {
+    background-color: #2a2a2a;
+}
+
+/* Highlight for selected options */
+.select-group select option:checked {
+    background-color: #1a73e8 !important;
+    color: white;
+}
+
+.select-group:hover {
+    transform: scale(1.02);
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* ===== Canvas Containers ===== */
+.containers {
+    display: inline-block;
+    margin-bottom: 20px;
+    vertical-align: top;
+}
+
+/* Final canvas and base canvas style */
+.final_canvas,
+.walk_idle_canvas,
+.horse_ride_canvas,
+.roll_jump_canvas,
+.canvas-style-base {
+    border-radius: 8px;
+    background: #1a1a1a;
+    border: 2px solid #444;
+    width: 333px;
+    /* fixed width */
+    height: auto;
+    display: inline-block;
+    vertical-align: top;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+/* Animation previews container styles */
+#animationsCombined,
+#animationsWithBackground {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+/* Individual animation canvas styles */
+#animationsCombined canvas {
+    border-radius: 6px;
+    border: 1px solid #444;
+    background: #1a1a1a;
+    width: 80px;
+    height: auto;
+    margin: 5px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    cursor: pointer;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+}
+
+#animationsWithBackground {
+    margin-top: 20px;
+}
+
+#animationsWithBackground canvas {
+    border-radius: 6px;
+    border: 1px solid #444;
+    background: #1a1a1a;
+    width: 208px;
+    height: auto;
+    margin: 5px;
+    padding: 5px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    cursor: pointer;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+}
+
+#animationsCombined canvas:hover,
+#animationsWithBackground canvas:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 8px #1a73e8;
+}
+
+.selected {
+    outline: 2px solid #4caf50;
+    cursor: pointer;
+}
+
+
+/* ===== Utility classes ===== */
+.text-center {
+    text-align: center;
+}
+
+/* ===== Responsive layout ===== */
+@media (max-width: 900px) {
+    body {
+        padding: 15px 10px;
+    }
+
+    .header {
+        justify-content: center;
+        gap: 10px;
+    }
+
+    #selection {
+        justify-content: center;
+    }
+
+    .containers {
+        display: block;
+        width: 100%;
+        margin-bottom: 30px;
+    }
+
+    .final_canvas,
+    .canvas-style-base {
+        width: 100% !important;
+        max-width: 400px;
+        height: auto;
+        margin-bottom: 20px;
+    }
+
+    #animationsCombined,
+    #animationsWithBackground {
+        justify-content: center;
+    }
+}
