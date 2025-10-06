@@ -11,7 +11,7 @@
 --Created:
 --   Thu 07 August 2025, 01:46:29 PM [GMT+1]
 --Modified:
---   Mon 06 October 2025, 03:33:39 PM [GMT+1]
+--   Mon 06 October 2025, 03:54:24 PM [GMT+1]
 --
 --Description:
 --   Cute Fantasy RPG – Player Sprite Creator Tool
@@ -35,12 +35,12 @@
     <div class="header">
         <label class="btn btn-primary mb-3">
             Select Player Folder
-            <input type="file" id="selectFiles" onchange="SpriteCreator.initializeCharacterAssetsFolder()"
-                style="display: none;" multiple webkitdirectory />
+            <input type="file" id="selectFiles" onchange="initializeCharacterAssetsFolder()" style="display: none;"
+                multiple webkitdirectory />
         </label>
 
-        <button id="randomize-selection" class="btn btn-secondary mb-3 ml-2"
-            onclick="SpriteCreator.randomizeSelections()" style="display: none;">🎲 Randomize Outfit</button>
+        <button id="randomize-selection" class="btn btn-secondary mb-3 ml-2" onclick="randomizeSelections()"
+            style="display: none;">🎲 Randomize Outfit</button>
 
         <label id="animations-number" style="display:none; margin-bottom:8px;">
             <input type="checkbox" id="toggleNumbers" />
