@@ -11,7 +11,7 @@
  *Created:
  *   Thu 07 August 2025, 01:46:29 PM [GMT+1]
  *Modified:
- *   Mon 06 October 2025, 03:54:11 PM [GMT+1]
+ *   Sat 08 November 2025, 08:43:51 PM [GMT]
  *
  *Description:
  *   Cute Fantasy RPG – Player Sprite Creator Tool
@@ -32,7 +32,7 @@ var playerBase = [[]],
 	legs = [[]],
 	feet = [[]],
 	hands = [[]],
-	hair = [[]],
+	head = [[]],
 	accessories = [[]],
 	mounts = [[]];
 
@@ -49,7 +49,7 @@ var selectedPlayerBase = [1],
 	selectedLegs = [0],
 	selectedFeet = [0],
 	selectedHands = [0],
-	selectedHair = [0],
+	selectedHead = [0],
 	selectedAccessories = [0],
 	selectedMounts = [0];
 
@@ -76,7 +76,7 @@ function initializeCharacterAssetsFolder() {
 	legs = [[]];
 	feet = [[]];
 	hands = [[]];
-	hair = [[]];
+	head = [[]];
 	accessories = [[]];
 	mounts = [[]];
 	toolsByFolder = {};
@@ -123,8 +123,8 @@ function composeResource(fileObj) {
 		case "Hands":
 			generateResource(hands, fileObj);
 			break;
-		case "Hair":
-			generateResource(hair, fileObj);
+		case "Head":
+			generateResource(head, fileObj);
 			break;
 		case "Accessories":
 			generateResource(accessories, fileObj);
@@ -152,7 +152,7 @@ function generateResource(arr, fileObj) {
 }
 
 function sort() {
-	[playerBase, chest, legs, feet, hands, hair, accessories, mounts].forEach((assetGroup) => {
+	[playerBase, chest, legs, feet, hands, head, accessories, mounts].forEach((assetGroup) => {
 		assetGroup.forEach((arr) => {
 			arr.sort((a, b) => a.name.localeCompare(b.name));
 			arr.unshift({ name: "none", file: null });
@@ -191,7 +191,7 @@ function randomizeSelections() {
 	selectedLegs = getRandomSelection(legs);
 	selectedFeet = getRandomSelection(feet);
 	selectedHands = getRandomSelection(hands);
-	selectedHair = getRandomSelection(hair);
+	selectedHead = getRandomSelection(head);
 	selectedAccessories = getRandomAccessoriesSelection(accessories);
 	selectedMounts = getRandomSelection(mounts);
 
@@ -206,6 +206,10 @@ function randomizeSelections() {
 			Array.from(select.options).forEach((option, i) => {
 				option.selected = selectedArr.includes(parseInt(option.value));
 			});
+			// Ensure value is set correctly for single select fallback behavior
+			if (!select.multiple && selectedArr.length > 0) {
+				select.value = selectedArr[0];
+			}
 		}
 	}
 
@@ -214,7 +218,7 @@ function randomizeSelections() {
 	updateSelect("selectedLegs", selectedLegs);
 	updateSelect("selectedFeet", selectedFeet);
 	updateSelect("selectedHands", selectedHands);
-	updateSelect("selectedHair", selectedHair);
+	updateSelect("selectedHead", selectedHead);
 	updateSelect("selectedAccessories", selectedAccessories);
 	updateSelect("selectedMounts", selectedMounts);
 
@@ -229,7 +233,7 @@ function initializeOptions() {
 	const div = document.getElementById("selection");
 	div.innerHTML = "";
 
-	function addOptionGroup(label, arr, selectedVar, id) {
+	function addOptionGroup(label, arr, selectedVar, id, multiple = false) {
 		div.appendChild(
 			renderOptionGroup(
 				label,
@@ -245,8 +249,9 @@ function initializeOptions() {
 						window[id] = Array.from(e.target.selectedOptions).map((opt) => parseInt(opt.value));
 					}
 					draw();
-				}
-			)
+				},
+				multiple,
+			),
 		);
 	}
 
@@ -255,21 +260,21 @@ function initializeOptions() {
 	addOptionGroup("Legs", legs, selectedLegs, "selectedLegs");
 	addOptionGroup("Feet", feet, selectedFeet, "selectedFeet");
 	addOptionGroup("Hands", hands, selectedHands, "selectedHands");
-	addOptionGroup("Hair", hair, selectedHair, "selectedHair");
+	addOptionGroup("Head", head, selectedHead, "selectedHead");
 	addOptionGroup("Accessories", accessories, selectedAccessories, "selectedAccessories");
 	addOptionGroup("Mounts", mounts, selectedMounts, "selectedMounts");
 
 	Object.keys(toolsByFolder).forEach((folder) => {
 		const folderId = `selectedToolsFolder_${folder}`;
-		addOptionGroup(`Tools - ${folder}`, [toolsByFolder[folder]], selectedToolsFolder[folder] || [0], folderId);
+		addOptionGroup(`Tools - ${folder}`, [toolsByFolder[folder]], selectedToolsFolder[folder] || [0], folderId, true);
 	});
 
 	draw();
 }
 
-function renderOptionGroup(label, options, id, selected, onChange) {
+function renderOptionGroup(label, options, id, selected, onChange, multiple = false) {
 	const group = document.createElement("div");
-	group.className = "select-group";
+	group.className = multiple ? "select-group multi-select" : "select-group single-select";
 
 	const labelElem = document.createElement("label");
 	labelElem.innerText = label;
@@ -277,14 +282,43 @@ function renderOptionGroup(label, options, id, selected, onChange) {
 
 	const select = document.createElement("select");
 	select.id = id;
-	select.multiple = true;
-	select.size = 5;
+	select.multiple = multiple;
+	select.size = multiple ? 5 : 1;
 	select.addEventListener("change", onChange);
 
-	options.forEach((option, i) => {
+	// Step 1: Normalize names for display
+	const normalizedNames = options.map((option) => {
+		let name = option;
+		name = name.replace(/\.png$/i, "");
+		name = name.replace(/_/g, " ");
+		name = name.replace(/\d+/g, "");
+		name = name.trim();
+		name = name.replace(/\b\w/g, (c) => c.toUpperCase());
+		return name;
+	});
+
+	// Step 2: Count occurrences
+	const counts = {};
+	normalizedNames.forEach((name) => {
+		counts[name] = (counts[name] || 0) + 1;
+	});
+
+	// Step 3: Track suffix index for duplicates
+	const suffixIndex = {};
+
+	normalizedNames.forEach((displayName, i) => {
 		const opt = document.createElement("option");
 		opt.value = i;
-		opt.innerText = option;
+
+		if (counts[displayName] > 1) {
+			// Duplicate: add number suffix
+			suffixIndex[displayName] = (suffixIndex[displayName] || 0) + 1;
+			opt.innerText = `${displayName} (${suffixIndex[displayName]})`;
+		} else {
+			// Unique: no number
+			opt.innerText = displayName;
+		}
+
 		if (Array.isArray(selected) && selected.includes(i)) opt.selected = true;
 		select.appendChild(opt);
 	});
@@ -305,7 +339,7 @@ const drawPositions = {
 	Legs: [0, 0],
 	Feet: [0, 0],
 	Hands: [0, 0],
-	Hair: [0, 0],
+	Head: [0, 0],
 	Accessories: [0, 0],
 	Player_Mounts: [0, 50],
 	Tools: [0, 0],
@@ -388,7 +422,7 @@ async function loadImages(imgFiles) {
 				};
 				img.src = URL.createObjectURL(file);
 			});
-		})
+		}),
 	);
 
 	return results.filter((r) => r !== null); // remove nulls
@@ -557,7 +591,7 @@ async function draw() {
 	collect(legs, selectedLegs, "Legs");
 	collect(feet, selectedFeet, "Feet");
 	collect(hands, selectedHands, "Hands");
-	collect(hair, selectedHair, "Hair");
+	collect(head, selectedHead, "Head");
 	collect(accessories, selectedAccessories, "Accessories");
 	collect(mounts, selectedMounts, "Player_Mounts");
 
@@ -807,8 +841,10 @@ function setupCustomDisplay() {
 }
 
 // Global animation references for scheduler
-let bodyFirstAnimations = [];
+const bodyLastAnimations = [12, 13, 14, 22, 25, 31, 34, 37, 40, 43, 48, 49, 51, 55]; // whatever numbers should be last
+const bodyFirstAnimations = Array.from({ length: 56 }, (_, i) => i).filter((i) => !bodyLastAnimations.includes(i));
 let toolsFirstAnimations = [];
+let animationsCount = 0;
 
 // ---------------- Final export canvas creation ----------------
 function createFullExportedCanvasFromActiveAnimations() {
@@ -916,7 +952,6 @@ function createFullExportedCanvasFromActiveAnimations() {
 					finalCtx.drawImage(bodyCanvas, sx, sy, frameSize, frameSize, dx, dy, frameSize, frameSize);
 				}
 			}
-
 			if (showNumbers) {
 				const numX = maxFrames * frameSize + frameSize / 2;
 				finalCtx.fillStyle = "#00000000";
@@ -928,6 +963,7 @@ function createFullExportedCanvasFromActiveAnimations() {
 				finalCtx.textBaseline = "middle";
 				finalCtx.fillText(row, numX, dy + frameSize / 2);
 			}
+			animationsCount = row;
 
 			function inRange(value, min, max) {
 				return value >= min && value <= max;
@@ -951,6 +987,7 @@ function createFullExportedCanvasFromActiveAnimations() {
 		if (oldCanvas) exportContainer.replaceChild(finalCanvas, oldCanvas);
 		else exportContainer.appendChild(finalCanvas);
 
+		document.getElementById("download-zip").style.display = animationsCount >= 55 ? "inline-block" : "none";
 		console.log("Export complete — final_canvas appended to #final-exported-canvas");
 		return finalCanvas;
 	} catch (err) {
@@ -973,6 +1010,165 @@ if (downloadButton) {
 		link.href = dataURL;
 		link.download = "sprite-sheet.png";
 		link.click();
+	});
+}
+
+// ---------------- Export all animations as ZIP ----------------
+const exportZipBtn = document.getElementById("download-zip");
+
+if (exportZipBtn) {
+	exportZipBtn.addEventListener("click", () => {
+		const finalCanvas = document.getElementById("final_canvas");
+		if (!finalCanvas) {
+			alert("Final canvas not ready!");
+			return;
+		}
+
+		const frameSize = 64; // Size of each frame in pixels
+		const zip = new JSZip();
+		const ctx = finalCanvas.getContext("2d");
+
+		// Define all animations: folder (action), direction, row index, frame count
+		const animations = [
+			["idle", "down", 0, 6],
+			["idle", "side", 1, 6],
+			["idle", "up", 2, 6],
+
+			["walk", "down", 3, 6],
+			["walk", "side", 4, 6],
+			["walk", "up", 5, 6],
+
+			["attack_1", "down", 6, 4],
+			["attack_2", "down", 7, 4],
+			["attack_3", "down", 8, 4],
+			["attack_1", "side", 9, 4],
+			["attack_2", "side", 10, 4],
+			["attack_3", "side", 11, 4],
+			["attack_1", "up", 12, 4],
+			["attack_2", "up", 13, 4],
+			["attack_3", "up", 14, 4],
+
+			["collapse", null, 15, 4],
+
+			["climb_ladder", null, 16, 6],
+
+			["dodge", "down", 17, 8],
+			["dodge", "side", 18, 8],
+			["dodge", "up", 19, 8],
+
+			["hold_idle", "down", 20, 1],
+			["hold_idle", "side", 21, 1],
+			["hold_idle", "up", 22, 1],
+
+			["hold_walk", "down", 23, 5],
+			["hold_walk", "side", 24, 5],
+			["hold_walk", "up", 25, 5],
+
+			["jump", "down", 26, 6],
+			["jump", "side", 27, 6],
+			["jump", "up", 28, 6],
+
+			["ranged_weapon", "down", 29, 6],
+			["ranged_weapon", "side", 30, 6],
+			["ranged_weapon", "up", 31, 6],
+
+			["tool_axe", "down", 32, 6],
+			["tool_axe", "side", 33, 6],
+			["tool_axe", "up", 34, 6],
+
+			["tool_pickaxe", "down", 35, 6],
+			["tool_pickaxe", "side", 36, 6],
+			["tool_pickaxe", "up", 37, 6],
+
+			["tool_hoe", "down", 38, 6],
+			["tool_hoe", "side", 39, 6],
+			["tool_hoe", "up", 40, 6],
+
+			["tool_watercan", "down", 41, 6],
+			["tool_watercan", "side", 42, 6],
+			["tool_watercan", "up", 43, 6],
+
+			["fish_cast", "down", 44, 9],
+			["fish_cast", "side", 45, 8],
+			["fish_cast", "up", 46, 9],
+			["fish_reel", "side", 47, 8],
+			["fish_reel", "down", 48, 8],
+			["fish_reel", "up", 49, 8],
+
+			["mount_idle", "down", 50, 2],
+			["mount_idle", "side", 51, 2],
+			["mount_idle", "up", 52, 2],
+
+			["mount_walk", "down", 53, 6],
+			["mount_walk", "side", 54, 6],
+			["mount_walk", "up", 55, 6],
+		];
+
+		for (const [folderName, direction, row, frames] of animations) {
+			let dir = direction;
+
+			// Convert side → right
+			const isSide = dir === "side";
+			if (isSide) dir = "right";
+
+			const rightFolderPath = dir ? `${dir}_${folderName}` : folderName;
+			let rightFolder = null;
+
+			// Left folder only needed for side
+			const leftFolderPath = isSide ? `left_${folderName}` : null;
+			let leftFolder = null;
+
+			for (let i = 0; i < frames; i++) {
+				const tmpCanvas = document.createElement("canvas");
+				tmpCanvas.width = frameSize;
+				tmpCanvas.height = frameSize;
+				const tmpCtx = tmpCanvas.getContext("2d");
+
+				tmpCtx.drawImage(finalCanvas, i * frameSize, row * frameSize, frameSize, frameSize, 0, 0, frameSize, frameSize);
+
+				// Check visibility
+				const imgData = tmpCtx.getImageData(0, 0, frameSize, frameSize);
+				const pixels = imgData.data;
+
+				let hasVisiblePixel = false;
+				for (let p = 3; p < pixels.length; p += 4) {
+					if (pixels[p] > 0) {
+						hasVisiblePixel = true;
+						break;
+					}
+				}
+
+				if (!hasVisiblePixel) continue;
+
+				// ✅ Create right folder only if needed
+				if (!rightFolder) rightFolder = zip.folder(rightFolderPath);
+
+				// ✅ Save RIGHT version
+				const dataURL = tmpCanvas.toDataURL("image/png");
+				rightFolder.file(`${i}.png`, dataURL.split(",")[1], { base64: true });
+
+				// ✅ For SIDE animations: also generate MIRRORED LEFT
+				if (isSide) {
+					const flipCanvas = document.createElement("canvas");
+					flipCanvas.width = frameSize;
+					flipCanvas.height = frameSize;
+					const flipCtx = flipCanvas.getContext("2d");
+
+					flipCtx.translate(frameSize, 0);
+					flipCtx.scale(-1, 1);
+					flipCtx.drawImage(tmpCanvas, 0, 0);
+
+					if (!leftFolder) leftFolder = zip.folder(leftFolderPath);
+
+					const flipDataURL = flipCanvas.toDataURL("image/png");
+					leftFolder.file(`${i}.png`, flipDataURL.split(",")[1], { base64: true });
+				}
+			}
+		}
+
+		zip.generateAsync({ type: "blob" }).then((content) => {
+			saveAs(content, "animations.zip");
+		});
 	});
 }
 

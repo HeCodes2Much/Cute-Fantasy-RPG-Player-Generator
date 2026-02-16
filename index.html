@@ -11,7 +11,7 @@
 --Created:
 --   Thu 07 August 2025, 01:46:29 PM [GMT+1]
 --Modified:
---   Mon 06 October 2025, 03:54:24 PM [GMT+1]
+--   Sat 08 November 2025, 06:50:41 PM [GMT]
 --
 --Description:
 --   Cute Fantasy RPG – Player Sprite Creator Tool
@@ -41,6 +41,9 @@
 
         <button id="randomize-selection" class="btn btn-secondary mb-3 ml-2" onclick="randomizeSelections()"
             style="display: none;">🎲 Randomize Outfit</button>
+
+        <button id="download-zip" class="btn btn-secondary  mb-3 ml-2" style="display: none;">⬇ Sprite Sheet Zip
+            ⬇</button>
 
         <label id="animations-number" style="display:none; margin-bottom:8px;">
             <input type="checkbox" id="toggleNumbers" />
@@ -82,6 +85,9 @@
     <script src="script.js"></script> <!-- External JavaScript -->
     <!-- jQuery JS (Optional) -->
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 </body>
 
 </html>
