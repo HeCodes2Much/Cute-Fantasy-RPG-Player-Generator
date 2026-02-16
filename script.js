@@ -11,7 +11,7 @@
  *Created:
  *   Thu 07 August 2025, 01:46:29 PM [GMT+1]
  *Modified:
- *   Sat 08 November 2025, 08:43:51 PM [GMT]
+ *   Mon 16 February 2026, 11:15:48 AM [GMT]
  *
  *Description:
  *   Cute Fantasy RPG – Player Sprite Creator Tool
@@ -345,26 +345,20 @@ const drawPositions = {
 	Tools: [0, 0],
 };
 
+// Generic offsets for tool types regardless of folder
+const toolTypeOffsets = {
+	Sword: [0, 6],
+	Tools: [0, 32],
+	Bow: [0, 29],
+	Fishing_Rod: [0, 44],
+	Lantern_Idle: [0, 20],
+	Lantern_Running: [0, 23],
+	Torch_Idle: [0, 20],
+	Torch_Running: [0, 23],
+};
+
 const toolFolderFileOffsets = {
-	Bow: { default: [0, 29] },
-	Fishing_Rod: { default: [0, 44] },
-	Iron: {
-		Iron_Sword: [0, 6],
-		Iron_Tools: [0, 32],
-		default: [0, 0],
-	},
-	Copper: {
-		Copper_Sword: [0, 6],
-		Copper_Tools: [0, 32],
-		default: [0, 0],
-	},
-	Other: {
-		Lantern_Idle: [0, 20],
-		Lantern_Running: [0, 23],
-		Torch_Idle: [0, 20],
-		Torch_Running: [0, 23],
-		default: [0, 0],
-	},
+	// Folder-specific overrides can still be added here if needed
 };
 
 const meleeToolNames = ["Sword"]; // Add all melee tool base names you have
@@ -393,12 +387,13 @@ const imageCache = new Map();
   */
 async function loadImages(imgFiles) {
 	const results = await Promise.all(
-		(imgFiles || []).map(async ({ file, x, y }) => {
+		(imgFiles || []).map(async (imageData) => {
+			const { file } = imageData;
 			if (!file) return null; // skip empty
 
 			// Use cached image if exists (File objects are usable as keys while page loaded)
 			if (imageCache.has(file)) {
-				return { img: imageCache.get(file), x, y };
+				return { ...imageData, img: imageCache.get(file) };
 			}
 
 			// Otherwise, load it and cache
@@ -414,7 +409,7 @@ async function loadImages(imgFiles) {
 					} catch (e) {
 						// ignore revoke errors
 					}
-					resolve({ img, x, y });
+					resolve({ ...imageData, img });
 				};
 				img.onerror = (e) => {
 					console.warn("Image failed to load", file, e);
@@ -454,14 +449,16 @@ const toolCheckCache = new Map();
 * @param {string|string[]} toolNames - Tool name(s) to look for
 * @returns {boolean} True if at least one tool is selected
   */
-function hasSelectedTool(folderNames, toolNames) {
-	const folders = Array.isArray(folderNames) ? folderNames : [folderNames];
+/**
+ * Check if any selected tools match a given set of names across ALL folders.
+ */
+function hasSelectedTool(toolNames) {
 	const names = Array.isArray(toolNames) ? toolNames : [toolNames];
 
-	const cacheKey = folders.join(",") + "|" + names.join(",");
+	const cacheKey = "all|" + names.join(",");
 	if (toolCheckCache.has(cacheKey)) return toolCheckCache.get(cacheKey);
 
-	const result = folders.some((folder) => {
+	const result = Object.keys(selectedToolsFolder).some((folder) => {
 		const selectedIndices = selectedToolsFolder[folder];
 		const toolList = toolsByFolder[folder] || [];
 		if (!selectedIndices || !toolList) return false;
@@ -572,6 +569,7 @@ async function draw() {
 
 	const bodyImgFiles = [];
 	const toolsImgFiles = [];
+	const selectedToolDetails = []; // To keep track of individual tools
 
 	// Collect function for body parts
 	function collect(arr, selected, name) {
@@ -603,9 +601,31 @@ async function draw() {
 			const fileObj = toolList[index];
 			if (index > 0 && fileObj && fileObj.file) {
 				const toolName = fileObj.name.split(".")[0];
-				const folderOffsets = toolFolderFileOffsets[folder] || {};
-				const [tx, ty] = folderOffsets[toolName] || folderOffsets["default"] || [0, 0];
-				toolsImgFiles.push({ file: fileObj.file, x: tx * frameSize, y: ty * frameSize });
+
+				// Try to find an offset: first check folder overrides, then generic tool types
+				let [tx, ty] = [0, 0];
+				const folderOffsets = toolFolderFileOffsets[folder];
+				if (folderOffsets && (folderOffsets[toolName] || folderOffsets["default"])) {
+					[tx, ty] = folderOffsets[toolName] || folderOffsets["default"];
+				} else {
+					// Lookup based on tool type in the filename
+					for (const [type, offset] of Object.entries(toolTypeOffsets)) {
+						if (toolName.includes(type)) {
+							[tx, ty] = offset;
+							break;
+						}
+					}
+				}
+
+				const toolData = {
+					file: fileObj.file,
+					x: tx * frameSize,
+					y: ty * frameSize,
+					folder: folder,
+					name: toolName,
+				};
+				toolsImgFiles.push(toolData);
+				selectedToolDetails.push(toolData);
 			}
 		});
 	});
@@ -619,9 +639,14 @@ async function draw() {
 	});
 
 	// Draw cached tool images
+	// Note: toolsCtx will still have ALL tools merged for internal use if needed,
+	// but exporters will use individual images.
 	loadedToolsImages.forEach(({ img, x, y }) => {
 		toolsCtx.drawImage(img, x, y);
 	});
+
+	// Store for use in export/previews
+	window.currentLoadedTools = loadedToolsImages;
 
 	// Rebuild exported animation and UI
 	createCombinedAnimationsPerAnimation();
@@ -639,12 +664,12 @@ function createCombinedAnimationsPerAnimation() {
 	schedulerClearTasks(); // we'll re-register combined animation tasks and demo tasks later in setupCustomDisplay
 
 	const skipMounts = selectedMounts.length === 1 && selectedMounts[0] === 0;
-	const hasMelee = hasSelectedTool(["Iron", "Copper"], meleeToolNames);
-	const hasRanged = hasSelectedTool("Bow", rangedToolNames);
-	const hasFishing = hasSelectedTool("Fishing_Rod", fishingToolNames);
-	const hasUtility = hasSelectedTool(["Iron", "Copper"], utilityToolNames);
-	const hasIdle = hasSelectedTool("Other", idleToolNames);
-	const hasRunning = hasSelectedTool("Other", runningToolNames);
+	const hasMelee = hasSelectedTool(meleeToolNames);
+	const hasRanged = hasSelectedTool(rangedToolNames);
+	const hasFishing = hasSelectedTool(fishingToolNames);
+	const hasUtility = hasSelectedTool(utilityToolNames);
+	const hasIdle = hasSelectedTool(idleToolNames);
+	const hasRunning = hasSelectedTool(runningToolNames);
 
 	for (let animIndex = 0; animIndex < numAnimations; animIndex++) {
 		if (skipMounts && mountAnimations.includes(animIndex)) {
@@ -655,73 +680,103 @@ function createCombinedAnimationsPerAnimation() {
 			const hr = document.getElementById("horse_ride_canvas");
 			if (hr) hr.style.display = "inline-block";
 		}
-		if (!hasMelee && meleeAnimations.includes(animIndex)) continue;
-		if (!hasRanged && rangedAnimations.includes(animIndex)) continue;
-		if (!hasFishing && fishingAnimations.includes(animIndex)) continue;
-		if (!hasUtility && utilityAnimations.includes(animIndex)) continue;
-		if (!hasIdle && idleAnimations.includes(animIndex)) continue;
-		if (!hasRunning && runningAnimations.includes(animIndex)) continue;
 
-		const frameCount = framesPerAnimationArray[animIndex] || 0;
-		if (frameCount <= 0) continue;
+		// Define tool categories
+		const isMelee = meleeAnimations.includes(animIndex);
+		const isRanged = rangedAnimations.includes(animIndex);
+		const isFishing = fishingAnimations.includes(animIndex);
+		const isUtility = utilityAnimations.includes(animIndex);
+		const isIdleHold = idleAnimations.includes(animIndex);
+		const isRunHold = runningAnimations.includes(animIndex);
+		const isToolAction = isMelee || isRanged || isFishing || isUtility || isIdleHold || isRunHold;
 
-		// Build combined frames for this animation index (composite of bodyCanvas/toolsCanvas)
-		const combinedFrames = [];
-		const bodyFirst = bodyFirstAnimations.includes(animIndex);
+		// Filter tools that apply to this animation
+		const activeTools = isToolAction
+			? (window.currentLoadedTools || []).filter((tool) => {
+					const toolName = tool.name || "";
+					if (isMelee) return meleeToolNames.some((n) => toolName.includes(n));
+					if (isRanged) return rangedToolNames.some((n) => toolName.includes(n));
+					if (isFishing) return fishingToolNames.some((n) => toolName.includes(n));
+					if (isUtility) return utilityToolNames.some((n) => toolName.includes(n));
+					if (isIdleHold) return idleToolNames.some((n) => toolName.includes(n));
+					if (isRunHold) return runningToolNames.some((n) => toolName.includes(n));
+					return false;
+				})
+			: [];
 
-		for (let frameIndex = 0; frameIndex < frameCount; frameIndex++) {
-			const combinedCanvas = document.createElement("canvas");
-			combinedCanvas.width = frameSize;
-			combinedCanvas.height = frameSize;
-			const combinedCtx = combinedCanvas.getContext("2d");
+		// For tool animations, skip if no tool is selected for the action
+		if (isToolAction && activeTools.length === 0) continue;
 
-			// draw either body then tools or tools then body
-			if (bodyFirst) {
-				combinedCtx.drawImage(bodyCanvas, frameIndex * frameSize, animIndex * frameSize, frameSize, frameSize, 0, 0, frameSize, frameSize);
-				combinedCtx.drawImage(toolsCanvas, frameIndex * frameSize, animIndex * frameSize, frameSize, frameSize, 0, 0, frameSize, frameSize);
-			} else {
-				combinedCtx.drawImage(toolsCanvas, frameIndex * frameSize, animIndex * frameSize, frameSize, frameSize, 0, 0, frameSize, frameSize);
-				combinedCtx.drawImage(bodyCanvas, frameIndex * frameSize, animIndex * frameSize, frameSize, frameSize, 0, 0, frameSize, frameSize);
-			}
+		// We only generate multiple rows for explicit tool actions
+		const toolsToLoop = isToolAction ? activeTools : [null];
 
-			if (document.getElementById("toggleNumbers")?.checked) {
-				combinedCtx.fillStyle = "white";
-				combinedCtx.font = "12px VT323";
-				combinedCtx.fillText(animIndex, 2, 10);
-			}
+		toolsToLoop.forEach((tool, toolIdx) => {
+			const frameCount = framesPerAnimationArray[animIndex] || 0;
+			if (frameCount <= 0) return;
 
-			combinedFrames.push(combinedCanvas);
-		}
+			// Build combined frames for this animation index
+			const combinedFrames = [];
+			const bodyFirst = bodyFirstAnimations.includes(animIndex);
 
-		// create preview canvas
-		const animCanvas = document.createElement("canvas");
-		animCanvas.id = `combined-anim-${animIndex}`;
-		animCanvas.width = frameSize;
-		animCanvas.height = frameSize;
-		animCanvas.classList.add("combined-preview");
-		container.appendChild(animCanvas);
+			for (let frameIndex = 0; frameIndex < frameCount; frameIndex++) {
+				const combinedCanvas = document.createElement("canvas");
+				combinedCanvas.width = frameSize;
+				combinedCanvas.height = frameSize;
+				const combinedCtx = combinedCanvas.getContext("2d");
 
-		// register this preview to the scheduler
-		schedulerRegisterTask({
-			id: `combined-${animIndex}`,
-			canvas: animCanvas,
-			frames: combinedFrames,
-			frameCount: combinedFrames.length,
-			frameTime: animationSpeed,
-			drawFn: (timestamp, task) => {
-				// simple frame advancing based on elapsed ms since lastAdvance
-				const now = timestamp || performance.now();
-				if (!task.lastAdvance) task.lastAdvance = now;
-				const elapsed = now - task.lastAdvance;
-				if (!task.currentFrame && task.currentFrame !== 0) task.currentFrame = 0;
-				if (elapsed >= (task.frameTime || animationSpeed)) {
-					task.currentFrame = (task.currentFrame + 1) % task.frameCount;
-					task.lastAdvance = now;
+				// Draw body and the specific tool
+				if (bodyFirst) {
+					combinedCtx.drawImage(bodyCanvas, frameIndex * frameSize, animIndex * frameSize, frameSize, frameSize, 0, 0, frameSize, frameSize);
+					if (tool) {
+						combinedCtx.drawImage(tool.img, frameIndex * frameSize + tool.x, animIndex * frameSize - tool.y, frameSize, frameSize, 0, 0, frameSize, frameSize);
+					}
+				} else {
+					if (tool) {
+						combinedCtx.drawImage(tool.img, frameIndex * frameSize + tool.x, animIndex * frameSize - tool.y, frameSize, frameSize, 0, 0, frameSize, frameSize);
+					}
+					combinedCtx.drawImage(bodyCanvas, frameIndex * frameSize, animIndex * frameSize, frameSize, frameSize, 0, 0, frameSize, frameSize);
 				}
-				const ctx = task.canvas.getContext("2d");
-				ctx.clearRect(0, 0, task.canvas.width, task.canvas.height);
-				ctx.drawImage(task.frames[task.currentFrame], 0, 0);
-			},
+
+				if (document.getElementById("toggleNumbers")?.checked) {
+					combinedCtx.fillStyle = "white";
+					combinedCtx.font = "12px VT323";
+					combinedCtx.fillText(animIndex, 2, 10);
+				}
+
+				combinedFrames.push(combinedCanvas);
+			}
+
+			// create preview canvas
+			const animCanvas = document.createElement("canvas");
+			animCanvas.id = `combined-anim-${animIndex}-${toolIdx}`;
+			animCanvas.width = frameSize;
+			animCanvas.height = frameSize;
+			animCanvas.dataset.animIndex = animIndex;
+			animCanvas.dataset.toolName = tool ? tool.name : "";
+			animCanvas.classList.add("combined-preview");
+			container.appendChild(animCanvas);
+
+			// register this preview to the scheduler
+			schedulerRegisterTask({
+				id: `combined-${animIndex}-${toolIdx}`,
+				canvas: animCanvas,
+				frames: combinedFrames,
+				frameCount: combinedFrames.length,
+				frameTime: animationSpeed,
+				drawFn: (timestamp, task) => {
+					const now = timestamp || performance.now();
+					if (!task.lastAdvance) task.lastAdvance = now;
+					const elapsed = now - task.lastAdvance;
+					if (!task.currentFrame && task.currentFrame !== 0) task.currentFrame = 0;
+					if (elapsed >= (task.frameTime || animationSpeed)) {
+						task.currentFrame = (task.currentFrame + 1) % task.frameCount;
+						task.lastAdvance = now;
+					}
+					const ctx = task.canvas.getContext("2d");
+					ctx.clearRect(0, 0, task.canvas.width, task.canvas.height);
+					ctx.drawImage(task.frames[task.currentFrame], 0, 0);
+				},
+			});
 		});
 	}
 
@@ -863,12 +918,16 @@ function createFullExportedCanvasFromActiveAnimations() {
 
 		// Gather combined-anim canvases indices from DOM
 		const animCanvases = Array.from(container.querySelectorAll("canvas"));
-		let animIndices = animCanvases
-			.map((c) => {
-				const m = c.id.match(/combined-anim-(\d+)/);
-				return m ? parseInt(m[1], 10) : NaN;
-			})
-			.filter((i) => Number.isFinite(i));
+		let animIndices = [
+			...new Set(
+				animCanvases
+					.map((c) => {
+						const m = c.id.match(/combined-anim-(\d+)/);
+						return m ? parseInt(m[1], 10) : NaN;
+					})
+					.filter((i) => Number.isFinite(i)),
+			),
+		];
 
 		const selectedAnimArray = Array.from(window.selectedAnimations || []);
 		if (selectedAnimArray.length > 0) {
@@ -877,12 +936,12 @@ function createFullExportedCanvasFromActiveAnimations() {
 
 		if (animIndices.length === 0) {
 			const skipMounts = selectedMounts.length === 1 && selectedMounts[0] === 0;
-			const hasMelee = hasSelectedTool("Combat", meleeToolNames);
-			const hasRanged = hasSelectedTool("Combat", rangedToolNames);
-			const hasFishing = hasSelectedTool("Utility", fishingToolNames);
-			const hasUtility = hasSelectedTool("Utility", utilityToolNames);
-			const hasIdle = hasSelectedTool("Other", idleToolNames);
-			const hasRunning = hasSelectedTool("Other", runningToolNames);
+			const hasMelee = hasSelectedTool(meleeToolNames);
+			const hasRanged = hasSelectedTool(rangedToolNames);
+			const hasFishing = hasSelectedTool(fishingToolNames);
+			const hasUtility = hasSelectedTool(utilityToolNames);
+			const hasIdle = hasSelectedTool(idleToolNames);
+			const hasRunning = hasSelectedTool(runningToolNames);
 
 			for (let animIndex = 0; animIndex < numAnimations; animIndex++) {
 				if (skipMounts && mountAnimations.includes(animIndex)) continue;
@@ -901,19 +960,45 @@ function createFullExportedCanvasFromActiveAnimations() {
 			return;
 		}
 
-		const animFrames = [];
+		animIndices = [...new Set(animIndices)]; // Double ensure deduped
+
+		const animFrameData = [];
 		let maxFrames = 0;
 		for (const animIndex of animIndices) {
 			const frameCount = framesPerAnimationArray[animIndex];
-			if (!frameCount || frameCount <= 0) {
-				console.warn(`Skipping anim ${animIndex} (no frames).`);
-				continue;
-			}
-			animFrames.push({ animIndex, frameCount });
-			if (frameCount > maxFrames) maxFrames = frameCount;
+			if (!frameCount || frameCount <= 0) continue;
+
+			// Define tool categories
+			const isMelee = meleeAnimations.includes(animIndex);
+			const isRanged = rangedAnimations.includes(animIndex);
+			const isFishing = fishingAnimations.includes(animIndex);
+			const isUtility = utilityAnimations.includes(animIndex);
+			const isIdleHold = idleAnimations.includes(animIndex);
+			const isRunHold = runningAnimations.includes(animIndex);
+			const isToolAction = isMelee || isRanged || isFishing || isUtility || isIdleHold || isRunHold;
+
+			// Filter tools that apply to this animation
+			const activeTools = isToolAction
+				? (window.currentLoadedTools || []).filter((tool) => {
+						const toolName = tool.name || "";
+						if (isMelee) return meleeToolNames.some((n) => toolName.includes(n));
+						if (isRanged) return rangedToolNames.some((n) => toolName.includes(n));
+						if (isFishing) return fishingToolNames.some((n) => toolName.includes(n));
+						if (isUtility) return utilityToolNames.some((n) => toolName.includes(n));
+						if (isIdleHold) return idleToolNames.some((n) => toolName.includes(n));
+						if (isRunHold) return runningToolNames.some((n) => toolName.includes(n));
+						return false;
+					})
+				: [];
+
+			const toolsToLoop = isToolAction ? activeTools : [null];
+			toolsToLoop.forEach((tool) => {
+				animFrameData.push({ animIndex, frameCount, tool });
+				if (frameCount > maxFrames) maxFrames = frameCount;
+			});
 		}
 
-		if (animFrames.length === 0) {
+		if (animFrameData.length === 0) {
 			console.warn("No valid animation frames found to export.");
 			return;
 		}
@@ -923,7 +1008,7 @@ function createFullExportedCanvasFromActiveAnimations() {
 		finalCanvas.id = "final_canvas";
 		finalCanvas.className = "final_canvas";
 		finalCanvas.width = (maxFrames + (showNumbers ? 1 : 0)) * frameSize;
-		finalCanvas.height = animFrames.length * frameSize;
+		finalCanvas.height = animFrameData.length * frameSize;
 
 		const finalCtx = finalCanvas.getContext("2d");
 		if (finalCtx) finalCtx.imageSmoothingEnabled = false;
@@ -934,8 +1019,8 @@ function createFullExportedCanvasFromActiveAnimations() {
 		rollJumpRows.splice(0, rollJumpRows.length);
 		horseRidingRows.splice(0, horseRidingRows.length);
 
-		for (let row = 0; row < animFrames.length; row++) {
-			const { animIndex, frameCount } = animFrames[row];
+		for (let row = 0; row < animFrameData.length; row++) {
+			const { animIndex, frameCount, tool } = animFrameData[row];
 			const bodyFirst = bodyFirstArray.includes(animIndex);
 			const dy = row * frameSize;
 
@@ -946,22 +1031,23 @@ function createFullExportedCanvasFromActiveAnimations() {
 
 				if (bodyFirst) {
 					finalCtx.drawImage(bodyCanvas, sx, sy, frameSize, frameSize, dx, dy, frameSize, frameSize);
-					finalCtx.drawImage(toolsCanvas, sx, sy, frameSize, frameSize, dx, dy, frameSize, frameSize);
+					if (tool) {
+						finalCtx.drawImage(tool.img, sx + tool.x, sy - tool.y, frameSize, frameSize, dx, dy, frameSize, frameSize);
+					}
 				} else {
-					finalCtx.drawImage(toolsCanvas, sx, sy, frameSize, frameSize, dx, dy, frameSize, frameSize);
+					if (tool) {
+						finalCtx.drawImage(tool.img, sx + tool.x, sy - tool.y, frameSize, frameSize, dx, dy, frameSize, frameSize);
+					}
 					finalCtx.drawImage(bodyCanvas, sx, sy, frameSize, frameSize, dx, dy, frameSize, frameSize);
 				}
 			}
 			if (showNumbers) {
 				const numX = maxFrames * frameSize + frameSize / 2;
-				finalCtx.fillStyle = "#00000000";
-				finalCtx.fillRect(maxFrames * frameSize, dy, frameSize, frameSize);
-
 				finalCtx.fillStyle = "#fff";
-				finalCtx.font = `${Math.floor(frameSize * 0.4)}px monospace`;
+				finalCtx.font = `${Math.floor(frameSize * 0.3)}px monospace`;
 				finalCtx.textAlign = "center";
 				finalCtx.textBaseline = "middle";
-				finalCtx.fillText(row, numX, dy + frameSize / 2);
+				finalCtx.fillText(animIndex, numX, dy + frameSize / 2);
 			}
 			animationsCount = row;
 
@@ -987,7 +1073,6 @@ function createFullExportedCanvasFromActiveAnimations() {
 		if (oldCanvas) exportContainer.replaceChild(finalCanvas, oldCanvas);
 		else exportContainer.appendChild(finalCanvas);
 
-		document.getElementById("download-zip").style.display = animationsCount >= 55 ? "inline-block" : "none";
 		console.log("Export complete — final_canvas appended to #final-exported-canvas");
 		return finalCanvas;
 	} catch (err) {
@@ -1013,164 +1098,7 @@ if (downloadButton) {
 	});
 }
 
-// ---------------- Export all animations as ZIP ----------------
-const exportZipBtn = document.getElementById("download-zip");
-
-if (exportZipBtn) {
-	exportZipBtn.addEventListener("click", () => {
-		const finalCanvas = document.getElementById("final_canvas");
-		if (!finalCanvas) {
-			alert("Final canvas not ready!");
-			return;
-		}
-
-		const frameSize = 64; // Size of each frame in pixels
-		const zip = new JSZip();
-		const ctx = finalCanvas.getContext("2d");
-
-		// Define all animations: folder (action), direction, row index, frame count
-		const animations = [
-			["idle", "down", 0, 6],
-			["idle", "side", 1, 6],
-			["idle", "up", 2, 6],
-
-			["walk", "down", 3, 6],
-			["walk", "side", 4, 6],
-			["walk", "up", 5, 6],
-
-			["attack_1", "down", 6, 4],
-			["attack_2", "down", 7, 4],
-			["attack_3", "down", 8, 4],
-			["attack_1", "side", 9, 4],
-			["attack_2", "side", 10, 4],
-			["attack_3", "side", 11, 4],
-			["attack_1", "up", 12, 4],
-			["attack_2", "up", 13, 4],
-			["attack_3", "up", 14, 4],
-
-			["collapse", null, 15, 4],
-
-			["climb_ladder", null, 16, 6],
-
-			["dodge", "down", 17, 8],
-			["dodge", "side", 18, 8],
-			["dodge", "up", 19, 8],
-
-			["hold_idle", "down", 20, 1],
-			["hold_idle", "side", 21, 1],
-			["hold_idle", "up", 22, 1],
-
-			["hold_walk", "down", 23, 5],
-			["hold_walk", "side", 24, 5],
-			["hold_walk", "up", 25, 5],
-
-			["jump", "down", 26, 6],
-			["jump", "side", 27, 6],
-			["jump", "up", 28, 6],
-
-			["ranged_weapon", "down", 29, 6],
-			["ranged_weapon", "side", 30, 6],
-			["ranged_weapon", "up", 31, 6],
-
-			["tool_axe", "down", 32, 6],
-			["tool_axe", "side", 33, 6],
-			["tool_axe", "up", 34, 6],
-
-			["tool_pickaxe", "down", 35, 6],
-			["tool_pickaxe", "side", 36, 6],
-			["tool_pickaxe", "up", 37, 6],
-
-			["tool_hoe", "down", 38, 6],
-			["tool_hoe", "side", 39, 6],
-			["tool_hoe", "up", 40, 6],
-
-			["tool_watercan", "down", 41, 6],
-			["tool_watercan", "side", 42, 6],
-			["tool_watercan", "up", 43, 6],
-
-			["fish_cast", "down", 44, 9],
-			["fish_cast", "side", 45, 8],
-			["fish_cast", "up", 46, 9],
-			["fish_reel", "side", 47, 8],
-			["fish_reel", "down", 48, 8],
-			["fish_reel", "up", 49, 8],
-
-			["mount_idle", "down", 50, 2],
-			["mount_idle", "side", 51, 2],
-			["mount_idle", "up", 52, 2],
-
-			["mount_walk", "down", 53, 6],
-			["mount_walk", "side", 54, 6],
-			["mount_walk", "up", 55, 6],
-		];
-
-		for (const [folderName, direction, row, frames] of animations) {
-			let dir = direction;
-
-			// Convert side → right
-			const isSide = dir === "side";
-			if (isSide) dir = "right";
-
-			const rightFolderPath = dir ? `${dir}_${folderName}` : folderName;
-			let rightFolder = null;
-
-			// Left folder only needed for side
-			const leftFolderPath = isSide ? `left_${folderName}` : null;
-			let leftFolder = null;
-
-			for (let i = 0; i < frames; i++) {
-				const tmpCanvas = document.createElement("canvas");
-				tmpCanvas.width = frameSize;
-				tmpCanvas.height = frameSize;
-				const tmpCtx = tmpCanvas.getContext("2d");
-
-				tmpCtx.drawImage(finalCanvas, i * frameSize, row * frameSize, frameSize, frameSize, 0, 0, frameSize, frameSize);
-
-				// Check visibility
-				const imgData = tmpCtx.getImageData(0, 0, frameSize, frameSize);
-				const pixels = imgData.data;
-
-				let hasVisiblePixel = false;
-				for (let p = 3; p < pixels.length; p += 4) {
-					if (pixels[p] > 0) {
-						hasVisiblePixel = true;
-						break;
-					}
-				}
-
-				if (!hasVisiblePixel) continue;
-
-				// ✅ Create right folder only if needed
-				if (!rightFolder) rightFolder = zip.folder(rightFolderPath);
-
-				// ✅ Save RIGHT version
-				const dataURL = tmpCanvas.toDataURL("image/png");
-				rightFolder.file(`${i}.png`, dataURL.split(",")[1], { base64: true });
-
-				// ✅ For SIDE animations: also generate MIRRORED LEFT
-				if (isSide) {
-					const flipCanvas = document.createElement("canvas");
-					flipCanvas.width = frameSize;
-					flipCanvas.height = frameSize;
-					const flipCtx = flipCanvas.getContext("2d");
-
-					flipCtx.translate(frameSize, 0);
-					flipCtx.scale(-1, 1);
-					flipCtx.drawImage(tmpCanvas, 0, 0);
-
-					if (!leftFolder) leftFolder = zip.folder(leftFolderPath);
-
-					const flipDataURL = flipCanvas.toDataURL("image/png");
-					leftFolder.file(`${i}.png`, flipDataURL.split(",")[1], { base64: true });
-				}
-			}
-		}
-
-		zip.generateAsync({ type: "blob" }).then((content) => {
-			saveAs(content, "animations.zip");
-		});
-	});
-}
+// ---------------- Selected animations set & click handlers ----------------
 
 // ---------------- Selected animations set & click handlers ----------------
 window.selectedAnimations = new Set();
@@ -1181,15 +1109,17 @@ function setupAnimationClickListeners() {
 
 		canvas.removeEventListener("click", canvas._clickHandler || (() => {}));
 		const handler = () => {
-			const m = canvas.id.match(/combined-anim-(\d+)/);
-			if (!m) return;
-			const animNum = parseInt(m[1], 10);
+			const animNum = parseInt(canvas.dataset.animIndex, 10);
+			if (isNaN(animNum)) return;
+
 			if (window.selectedAnimations.has(animNum)) {
 				window.selectedAnimations.delete(animNum);
-				canvas.classList.remove("selected");
+				// We need to unselect ALL previews with this animIndex
+				document.querySelectorAll(`[data-anim-index="${animNum}"]`).forEach((c) => c.classList.remove("selected"));
 			} else {
 				window.selectedAnimations.add(animNum);
-				canvas.classList.add("selected");
+				// We need to select ALL previews with this animIndex
+				document.querySelectorAll(`[data-anim-index="${animNum}"]`).forEach((c) => c.classList.add("selected"));
 			}
 			console.log("Selected animations:", Array.from(window.selectedAnimations));
 			createFullExportedCanvasFromActiveAnimations();
